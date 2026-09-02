@@ -1,0 +1,2495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>金海仓库管理系统 - Gold Marine Tanzania Limited</title>
+  <!-- 优先加载本地 Tailwind（离线可用），本地缺失时回退 CDN -->
+  <script src="assets/tailwind.js"></script>
+  <script>if(typeof tailwind==='undefined'){document.write('<script src="https://cdn.tailwindcss.com"><\/script>');}</script>
+  <!-- 优先加载本地 XLSX（离线可用），本地缺失时回退 CDN -->
+  <script src="assets/xlsx.full.min.js"></script>
+  <script>if(typeof XLSX==='undefined'){document.write('<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"><\/script>');}</script>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      background: #f1f5f9;
+    }
+    /* 兜底样式：即使 Tailwind 加载失败，也能保证页面隐藏逻辑生效，避免所有界面堆叠在一起 */
+    .hidden { display: none !important; }
+    .flex { display: flex; }
+    .brand-title {
+      text-align: center;
+      font-weight: 900;
+      background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 30%, #0ea5e9 60%, #1e40af 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 2px;
+    }
+    .brand-title .cn { font-size: 26px; display: block; line-height: 1.2; }
+    .brand-title .en { font-size: 18px; display: block; line-height: 1.3; letter-spacing: 1px; margin-top: 2px; }
+
+    /* ========== 打印样式 ========== */
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #fff; margin: 0 !important; padding: 0 4mm !important; }
+      .print-area { box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+      @page { size: A4 landscape; margin: 8mm; }
+      table { border-collapse: collapse; width: 100%; }
+      th, td { border: 1px solid #222; padding: 6px 8px; font-size: 12px; text-align: center; vertical-align: middle; }
+      th { background: #d9d9d9; color: #000; font-weight: 600; }
+      .print-top-table td, .print-mid-table td { padding: 7px 8px; font-size: 13px; height: 36px; }
+      .spec-cell { white-space: pre-wrap; text-align: left; }
+      .text-left { text-align: left; }
+      .text-right { text-align: right; }
+      .sign-row td { padding: 10px 8px; font-size: 13px; height: 42px; }
+      .print-hide-col { display: none !important; }
+      input, select, textarea { border: none !important; background: transparent !important; box-shadow: none !important; }
+      .doc-form-wrapper { border: none !important; box-shadow: none !important; padding: 0 !important; }
+      /* 打印时公司名渐变回退为纯蓝色，确保文字可见 */
+      .doc-header .company-en, .doc-header .company-cn {
+        background: none !important; -webkit-background-clip: initial !important;
+        background-clip: initial !important; -webkit-text-fill-color: #1e40af !important; color: #1e40af !important;
+        text-align: center !important;
+      }
+      .doc-header .doc-title { font-size: 16px !important; text-align: center !important; }
+      /* 单据打印字号（80%） */
+      .doc-form-table td, .doc-footer, .doc-footer td { font-size: 10px !important; }
+      .doc-form-table input, .doc-form-table select { font-size: 10px !important; }
+      .doc-item-table th, .doc-item-table td { font-size: 10px !important; padding: 3px 4px; }
+      /* 明细表固定布局+百分比列宽（!important 覆盖 th 上的内联像素宽度，
+         否则固定布局下 px 列宽+百分比列宽之和会超出表宽，导致右边框溢出错位），
+         百分比合计=100%，保证打印时最左/最右边框与上下各表完全对齐 */
+      .doc-form-table, .doc-item-table, .doc-footer { table-layout: fixed; width: 100% !important; }
+      .doc-item-table th:nth-child(1), .doc-item-table td:nth-child(1) { width: 4% !important; }
+      .doc-item-table th:nth-child(3), .doc-item-table td:nth-child(3) { width: 17% !important; }
+      .doc-item-table th:nth-child(4), .doc-item-table td:nth-child(4) { width: 26% !important; }
+      .doc-item-table th:nth-child(5), .doc-item-table td:nth-child(5) { width: 5% !important; }
+      .doc-item-table th:nth-child(6), .doc-item-table td:nth-child(6) { width: 7% !important; }
+      .doc-item-table th:nth-child(7), .doc-item-table td:nth-child(7) { width: 6% !important; }
+      .doc-item-table th:nth-child(8), .doc-item-table td:nth-child(8) { width: 6% !important; }
+      .doc-item-table th:nth-child(9), .doc-item-table td:nth-child(9) { width: 8% !important; }
+      .doc-item-table th:nth-child(10), .doc-item-table td:nth-child(10) { width: 6% !important; }
+      .doc-item-table th:nth-child(11), .doc-item-table td:nth-child(11) { width: 8% !important; }
+      .doc-item-table th:nth-child(12), .doc-item-table td:nth-child(12) { width: 7% !important; }
+      .doc-item-table th, .doc-item-table td { word-break: break-word; overflow-wrap: anywhere; }
+    }
+
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #334155; padding: 6px 6px; font-size: 12px; text-align: center; vertical-align: middle; }
+    th { background: #d9d9d9; color: #000; font-weight: 600; }
+    tr:nth-child(even) td { background: #f8fafc; }
+    tr:hover td { background: #e0f2fe; }
+    /* 单据列表：当前编辑中的记录固定第一行并高亮（!important 覆盖斑马纹与悬停色） */
+    tr.current-doc-row td { background: #dbeafe !important; font-weight: 600; }
+    .doc-cur-badge, .doc-new-badge {
+      display: inline-block; margin-left: 6px; padding: 1px 8px;
+      border-radius: 9999px; font-size: 10px; font-weight: 500;
+      vertical-align: middle; color: #fff; letter-spacing: 1px;
+    }
+    .doc-cur-badge { background: #1d4ed8; }
+    .doc-new-badge { background: #d97706; }
+    /* 单据列表：紧凑按钮 / 标题计数 / 空状态行 / 搜索框 */
+    .btn.btn-sm { padding: 3px 10px; font-size: 12px; }
+    .doc-count { font-size: 11px; font-weight: 500; color: #64748b; margin-left: 8px; letter-spacing: 0; }
+    .doc-search-input { width: 240px; padding: 5px 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 12px; box-sizing: border-box; }
+    .doc-search-input:focus { border-color: #2563eb; box-shadow: 0 0 0 2px #bfdbfe; }
+    tr.doc-empty-row td { background: #f8fafc !important; color: #94a3b8; padding: 16px 8px; font-weight: 400; }
+    /* 入库/出库明细表尾合计行：浅蓝底、加粗，滚动时吸底常驻可见 */
+    tfoot td { background: #eff6ff !important; border-top: 2px solid #334155; }
+    .table-wrap tfoot td { position: sticky; bottom: 0; z-index: 2; }
+    .tab-btn.active { background: #1e40af; color: #fff; }
+    .tab-btn { background: #e2e8f0; color: #334155; }
+    .modal-bg { background: rgba(0,0,0,.45); }
+    input, select, textarea { outline: none; }
+    input:focus, select:focus, textarea:focus { border-color: #2563eb; box-shadow: 0 0 0 2px #bfdbfe; }
+    .btn { padding: 6px 14px; border-radius: 6px; font-size: 13px; cursor: pointer; transition: .15s; font-weight: 500; }
+    .btn-primary { background: #2563eb; color: #fff; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-success:hover { background: #15803d; }
+    .btn-warn { background: #f59e0b; color: #fff; }
+    .btn-warn:hover { background: #d97706; }
+    .btn-danger { background: #dc2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-gray { background: #64748b; color: #fff; }
+    .btn-gray:hover { background: #475569; }
+    .toast {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      padding: 10px 20px; border-radius: 6px; color: #fff; font-size: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.2); animation: slideIn .3s;
+    }
+    .toast.success { background: linear-gradient(135deg, #b8860b 0%, #d4a017 55%, #f0c419 100%); color: #fff; }
+    .toast.error { background: linear-gradient(135deg, #b8860b 0%, #d4a017 55%, #f0c419 100%); color: #fff; }
+    .toast.info { background: linear-gradient(135deg, #b8860b 0%, #d4a017 55%, #f0c419 100%); color: #fff; }
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .form-input {
+      width: 100%; padding: 6px 10px; border: 1px solid #cbd5e1;
+      border-radius: 6px; font-size: 13px; box-sizing: border-box;
+    }
+    textarea.form-input { resize: vertical; min-height: 60px; white-space: pre-wrap; }
+    .form-label {
+      font-size: 13px; color: #334155; font-weight: 500;
+      margin-bottom: 4px; display: block;
+    }
+    .card {
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 16px;
+    }
+    .table-wrap {
+      overflow-x: auto; max-height: 65vh; overflow-y: auto;
+    }
+    .grn-top-table td { border: 1px solid #334155; padding: 6px 8px; font-size: 13px; }
+    .spec-cell { white-space: pre-wrap; text-align: left; }
+    .text-left { text-align: left; }
+    .text-right { text-align: right; }
+
+    /* 单据表单 */
+    .doc-form-wrapper { background: #fff; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); padding: 20px; }
+    .doc-header { text-align: center; margin-bottom: 12px; position: relative; }
+    /* logo 绝对定位固定在左上角，不占用文字排版空间，公司名在整表正中 */
+    .doc-logo { height: 42px; position: absolute; top: 0; left: 0; float: none; }
+    .doc-header .company-en, .doc-header .company-cn {
+      display: block; text-align: center; margin-left: auto; margin-right: auto; font-weight: 700;
+    }
+    .doc-header .company-en {
+      font-size: 24px; margin-top: 2px;
+      background: linear-gradient(180deg, #1e40af 0%, #2563eb 45%, #93c5fd 82%, #ffffff 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: #1e40af;
+    }
+    .doc-header .company-cn {
+      font-size: 22px; margin-top: 2px;
+      background: linear-gradient(180deg, #1e40af 0%, #2563eb 45%, #93c5fd 82%, #ffffff 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent; color: #1e40af;
+    }
+    .doc-header .doc-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-top: 6px; letter-spacing: 2px; text-align: center; }
+    .doc-form-table td { padding: 4px 8px; font-size: 10px; }
+    .doc-form-table .label-td { background: #f8fafc; width: 110px; text-align: center; font-weight: 500; }
+    .doc-form-table input, .doc-form-table select { width: 100%; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 10px; }
+    .doc-item-table th { background: #d9d9d9; color: #000; font-weight: 600; padding: 6px 4px; font-size: 10px; }
+    .doc-item-table td { padding: 4px 4px; font-size: 10px; height: 24px; }
+    .doc-item-table input, .doc-item-table select { width: 100%; padding: 3px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 10px; }
+    .doc-item-table textarea { width: 100%; padding: 3px 4px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 10px; resize: none; min-height: 22px; height: 24px; box-sizing: border-box; white-space: pre-wrap; overflow: hidden; }
+    .doc-footer { margin-top: 10px; font-size: 10px; }
+    .doc-footer td { padding: 8px 10px; }
+    .sign-input { border: none; border-bottom: 1px solid #94a3b8; background: transparent; padding: 2px 4px; min-width: 140px; font-size: 10px; }
+    .print-val { word-break: break-word; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body class="bg-slate-50">
+
+<!-- 登录页 -->
+<div id="loginPage" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 via-slate-50 to-blue-50">
+  <div class="card w-[380px] no-print bg-white rounded-xl shadow-xl overflow-hidden">
+    <!-- 顶部渐变横幅 -->
+    <div style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 60%, #3b82f6 100%); padding: 22px 20px 16px; text-align: center; color: #fff;">
+      <div style="font-size:24px; font-weight:900; letter-spacing:3px; line-height:1.25;">金海坦桑尼亚有限公司</div>
+      <div style="font-size:14px; font-weight:600; letter-spacing:1px; margin-top:4px; opacity:.92;">Gold Marine Tanzania Limited</div>
+      <div style="width:56px; height:3px; background:rgba(255,255,255,.65); border-radius:2px; margin:12px auto 0;"></div>
+    </div>
+    <!-- 表单区 -->
+    <div style="padding: 20px 34px 24px;">
+      <div class="text-center text-slate-800 mb-5" style="font-size: 1.05rem; font-weight: 700; letter-spacing: 1px;">基戈马工程材料仓库管理系统</div>
+      <form id="loginForm">
+        <div class="mb-4">
+          <label class="form-label">用户名</label>
+          <input id="username" class="form-input" value="admin" />
+        </div>
+        <div class="mb-5">
+          <label class="form-label">密码</label>
+          <input id="password" type="password" class="form-input" placeholder="默认空密码" />
+        </div>
+        <button type="submit" class="btn btn-primary w-full py-2 font-medium" style="letter-spacing:6px;">登 录</button>
+      </form>
+      <div class="text-center text-slate-400 mt-4" style="font-size: 11px;">阿繁提之家版权所有</div>
+    </div>
+  </div>
+</div>
+
+<!-- 主页面（初始隐藏） -->
+<div id="mainPage" class="hidden min-h-screen">
+  <!-- 顶部导航 -->
+  <div class="bg-white shadow no-print sticky top-0 z-40">
+    <div class="max-w-[1800px] mx-auto px-6 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="text-2xl">⚓</div>
+        <div>
+          <div class="brand-title" style="text-align:left;">
+            <span class="cn" style="font-size:18px;">金海坦桑尼亚有限公司</span>
+            <span class="en" style="font-size:12px;">Gold Marine Tanzania Limited</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-slate-600" id="currentDate"></span>
+        <button id="logoutBtn" class="btn btn-gray">退出登录</button>
+      </div>
+    </div>
+    <!-- 标签页 -->
+    <div class="max-w-[1800px] mx-auto px-6 flex flex-wrap gap-1 border-t border-slate-200 pt-0">
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="stockIn">📥 入库单</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="stockOut">📤 出库单</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="inQuery">📋 入库明细</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="outQuery">📋 出库明细</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="allQuery">🔍 综合查询</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="stock">📊 库存统计</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="materials">📦 物料表</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="suppliers">👥 供应商表</button>
+      <button class="tab-btn px-4 py-2 rounded-t-md text-sm" data-tab="dataManage">📥 导入导出</button>
+    </div>
+  </div>
+
+  <div class="max-w-[1800px] mx-auto p-4">
+    <!-- ========== 入库单 ========== -->
+    <div id="tab-stockIn" class="tab-content print-area hidden">
+      <div class="doc-form-wrapper" id="stockInDoc">
+        <div class="doc-header">
+          <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+          <div class="company-en">Gold Marine Tanzania Limited</div>
+          <div class="company-cn">金海坦桑尼亚有限公司</div>
+          <div class="doc-title">Goods Receipt Note 入库单</div>
+        </div>
+        <table class="doc-form-table" style="margin-bottom:8px;">
+          <tr>
+            <td class="label-td">入库单号<br><span style="font-size:9px;">GRN Number</span></td>
+            <td><input type="text" id="inDocNo" readonly style="background:#f8fafc;"></td>
+            <td class="label-td">存储位置：<br><span style="font-size:9px;">Storage Location</span></td>
+            <td><input type="text" id="inDocLocation" value="基戈马码头项目部"></td>
+            <td class="label-td">供应商<br><span style="font-size:9px;">Supplier</span></td>
+            <td><select id="inDocSupplier"></select></td>
+            <td class="label-td">入库日期<br><span style="font-size:9px;">GRN Date</span></td>
+            <td><input type="date" id="inDocDate"></td>
+          </tr>
+          <tr>
+            <td class="label-td">需求部门<br><span style="font-size:9px;">Demand Department</span></td>
+            <td><input type="text" id="inDocDept" value="基建工程处"></td>
+            <td class="label-td">需求计划单号：<br><span style="font-size:9px;">Demand Plan Sheet No.</span></td>
+            <td><input type="text" id="inDocPlan" readonly style="background:#f8fafc;"></td>
+            <td class="label-td">合同号：<br><span style="font-size:9px;">Contract No.</span></td>
+            <td><input type="text" id="inDocContract" readonly style="background:#f8fafc;"></td>
+            <td class="label-td">采购单号<br><span style="font-size:9px;">Purchase Order</span></td>
+            <td><input type="text" id="inDocOrder" readonly style="background:#f8fafc;"></td>
+          </tr>
+        </table>
+        <table class="doc-item-table" id="inDocItemsTable">
+          <thead>
+            <tr>
+              <th style="width:40px;">序号<br><span style="font-size:8px;">No.</span></th>
+              <th class="print-hide-col" style="width:90px;">物料代码<br><span style="font-size:8px;">Material No.</span></th>
+              <th style="width:18%;">名称<br><span style="font-size:8px;">Material Name</span></th>
+              <th style="width:30%;">规格型号<br><span style="font-size:8px;">Specification</span></th>
+              <th style="width:50px;">单位<br><span style="font-size:8px;">Unit</span></th>
+              <th style="width:70px;">数量<br><span style="font-size:8px;">Quantity</span></th>
+              <th style="width:60px;">毛重<br><span style="font-size:8px;">Gross Weight</span></th>
+              <th style="width:60px;">净重<br><span style="font-size:8px;">Net Weight</span></th>
+              <th style="width:80px;">车号<br><span style="font-size:8px;">License Plate NO.</span></th>
+              <th style="width:50px;">送样<br><span style="font-size:8px;">sample submission</span></th>
+              <th style="width:80px;">送检检测报告<br><span style="font-size:8px;">Submission of Inspection and Testing Report</span></th>
+              <th style="width:80px;">送货单号<br><span style="font-size:8px;">Delivery Note</span></th>
+              <th class="no-print" style="width:50px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="inDocItemsBody"></tbody>
+          <tfoot>
+            <tr>
+              <td></td>
+              <td class="print-hide-col"></td>
+              <td colspan="3" style="text-align:right; font-weight:600;">合计 Total</td>
+              <td id="inDocTotal" style="font-weight:600;">0</td>
+              <td colspan="7"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="no-print mt-2">
+          <button class="btn btn-primary" onclick="addDocItem('in')">+ 添加行</button>
+        </div>
+        <table class="doc-footer">
+          <tr>
+            <td style="width:220px;">联合验收人<br><span style="font-size:9px;">Joint Inspector:</span></td>
+            <td><input type="text" class="sign-input" id="inDocInspectors" value="曹乐乐、杨代齐、张清政"></td>
+            <td style="width:120px;">签收人<br><span style="font-size:9px;">Receiver:</span></td>
+            <td><input type="text" class="sign-input" id="inDocReceiver" value="孔繁富"></td>
+            <td style="width:120px;">签收日期<br><span style="font-size:9px;">Date:</span></td>
+            <td><input type="date" class="sign-input" id="inDocSignDate"></td>
+          </tr>
+        </table>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-3 no-print">
+        <button class="btn btn-primary" onclick="newDocument('in')">🆕 新增</button>
+        <button class="btn btn-success" onclick="saveDocument('in')">💾 保存</button>
+        <button class="btn btn-danger" onclick="deleteCurrentDocument('in')">🗑 删除</button>
+        <button class="btn btn-warn" onclick="printDoc('stockInDoc')">🖨 打印</button>
+        <button class="btn btn-success" onclick="exportDocExcel('in')">📤 导出Excel</button>
+      </div>
+      <div class="card mt-3 no-print">
+        <div class="flex flex-wrap gap-2 mb-2 items-center" style="justify-content:space-between;">
+          <h4 class="font-bold text-slate-700 text-sm">📋 入库单列表<span class="doc-count" id="inDocCount"></span></h4>
+          <div class="flex flex-wrap gap-2 items-center">
+            <input type="text" id="inDocSearch" class="doc-search-input" placeholder="🔍 搜索单号 / 日期 / 供应商 / 存储位置" oninput="renderDocList('in')"/>
+            <button class="btn btn-gray btn-sm" onclick="resetDocSearch('in')">重置</button>
+          </div>
+        </div>
+        <div class="table-wrap" style="max-height:200px;">
+          <table id="inDocListTable">
+            <thead><tr><th>入库单号</th><th>日期</th><th>供应商</th><th>存储位置</th><th>操作</th></tr></thead>
+            <tbody id="inDocListBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 出库单 ========== -->
+    <div id="tab-stockOut" class="tab-content print-area hidden">
+      <div class="doc-form-wrapper" id="stockOutDoc">
+        <div class="doc-header">
+          <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+          <div class="company-en">Gold Marine Tanzania Limited</div>
+          <div class="company-cn">金海坦桑尼亚有限公司</div>
+          <div class="doc-title">Goods Issue Note 出库单</div>
+        </div>
+        <table class="doc-form-table" style="margin-bottom:8px;">
+          <tr>
+            <td class="label-td">出库单号<br><span style="font-size:9px;">GIN Number</span></td>
+            <td><input type="text" id="outDocNo" readonly style="background:#f8fafc;"></td>
+            <td class="label-td">存储位置：<br><span style="font-size:9px;">Storage Location</span></td>
+            <td><input type="text" id="outDocLocation" value="基戈马码头项目部"></td>
+            <td class="label-td">供应商<br><span style="font-size:9px;">Supplier</span></td>
+            <td><select id="outDocSupplier"></select></td>
+            <td class="label-td">出库日期<br><span style="font-size:9px;">GIN Date</span></td>
+            <td><input type="date" id="outDocDate"></td>
+          </tr>
+          <tr>
+            <td class="label-td">需求部门<br><span style="font-size:9px;">Demand Department</span></td>
+            <td><input type="text" id="outDocDept" value="基建工程处"></td>
+            <td class="label-td">需求计划单号：<br><span style="font-size:9px;">Demand Plan Sheet No.</span></td>
+            <td><input type="text" id="outDocPlan" readonly style="background:#f8fafc;"></td>
+            <td class="label-td">合同号：<br><span style="font-size:9px;">Contract No.</span></td>
+            <td><input type="text" id="outDocContract" readonly style="background:#f8fafc;"></td>
+            <td class="label-td">采购单号<br><span style="font-size:9px;">Purchase Order</span></td>
+            <td><input type="text" id="outDocOrder" readonly style="background:#f8fafc;"></td>
+          </tr>
+        </table>
+        <table class="doc-item-table" id="outDocItemsTable">
+          <thead>
+            <tr>
+              <th style="width:40px;">序号<br><span style="font-size:8px;">No.</span></th>
+              <th class="print-hide-col" style="width:90px;">物料代码<br><span style="font-size:8px;">Material No.</span></th>
+              <th style="width:18%;">名称<br><span style="font-size:8px;">Material Name</span></th>
+              <th style="width:30%;">规格型号<br><span style="font-size:8px;">Specification</span></th>
+              <th style="width:50px;">单位<br><span style="font-size:8px;">Unit</span></th>
+              <th style="width:70px;">数量<br><span style="font-size:8px;">Quantity</span></th>
+              <th style="width:60px;">毛重<br><span style="font-size:8px;">Gross Weight</span></th>
+              <th style="width:60px;">净重<br><span style="font-size:8px;">Net Weight</span></th>
+              <th style="width:80px;">车号<br><span style="font-size:8px;">License Plate NO.</span></th>
+              <th style="width:50px;">送样<br><span style="font-size:8px;">sample submission</span></th>
+              <th style="width:80px;">送检检测报告<br><span style="font-size:8px;">Submission of Inspection and Testing Report</span></th>
+              <th style="width:80px;">送货单号<br><span style="font-size:8px;">Delivery Note</span></th>
+              <th class="no-print" style="width:50px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="outDocItemsBody"></tbody>
+          <tfoot>
+            <tr>
+              <td></td>
+              <td class="print-hide-col"></td>
+              <td colspan="3" style="text-align:right; font-weight:600;">合计 Total</td>
+              <td id="outDocTotal" style="font-weight:600;">0</td>
+              <td colspan="7"></td>
+            </tr>
+          </tfoot>
+        </table>
+        <div class="no-print mt-2">
+          <button class="btn btn-primary" onclick="addDocItem('out')">+ 添加行</button>
+        </div>
+        <table class="doc-footer">
+          <tr>
+            <td style="width:220px;">联合验收人<br><span style="font-size:9px;">Joint Inspector:</span></td>
+            <td><input type="text" class="sign-input" id="outDocInspectors" value="孔繁富、曹乐乐、杨代齐、张清政"></td>
+            <td style="width:120px;">签收人<br><span style="font-size:9px;">Receiver:</span></td>
+            <td><input type="text" class="sign-input" id="outDocReceiver" value="中铁建工集团东非有限公司"></td>
+            <td style="width:120px;">签收日期<br><span style="font-size:9px;">Date:</span></td>
+            <td><input type="date" class="sign-input" id="outDocSignDate"></td>
+          </tr>
+        </table>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-3 no-print">
+        <button class="btn btn-primary" onclick="newDocument('out')">🆕 新增</button>
+        <button class="btn btn-success" onclick="saveDocument('out')">💾 保存</button>
+        <button class="btn btn-danger" onclick="deleteCurrentDocument('out')">🗑 删除</button>
+        <button class="btn btn-warn" onclick="printDoc('stockOutDoc')">🖨 打印</button>
+        <button class="btn btn-success" onclick="exportDocExcel('out')">📤 导出Excel</button>
+      </div>
+      <div class="card mt-3 no-print">
+        <div class="flex flex-wrap gap-2 mb-2 items-center" style="justify-content:space-between;">
+          <h4 class="font-bold text-slate-700 text-sm">📋 出库单列表<span class="doc-count" id="outDocCount"></span></h4>
+          <div class="flex flex-wrap gap-2 items-center">
+            <input type="text" id="outDocSearch" class="doc-search-input" placeholder="🔍 搜索单号 / 日期 / 供应商 / 存储位置" oninput="renderDocList('out')"/>
+            <button class="btn btn-gray btn-sm" onclick="resetDocSearch('out')">重置</button>
+          </div>
+        </div>
+        <div class="table-wrap" style="max-height:200px;">
+          <table id="outDocListTable">
+            <thead><tr><th>出库单号</th><th>日期</th><th>供应商</th><th>存储位置</th><th>操作</th></tr></thead>
+            <tbody id="outDocListBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== 入库明细 ========== -->
+    <div id="tab-inQuery" class="tab-content card print-area hidden">
+      <div class="doc-header">
+        <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+        <div class="company-en">Gold Marine Tanzania Limited</div>
+        <div class="company-cn">金海坦桑尼亚有限公司</div>
+        <div class="doc-title">入库明细查询 / Stock In Query</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 no-print items-end">
+        <div><label class="form-label">开始日期</label><input type="date" id="inStartDate" class="form-input"/></div>
+        <div><label class="form-label">结束日期</label><input type="date" id="inEndDate" class="form-input"/></div>
+        <div><label class="form-label">关键字</label><input type="text" id="inKeyword" class="form-input" style="width:200px;" placeholder="单号/物料/供应商等"/></div>
+        <button class="btn btn-primary" id="searchInBtn">🔍 查询</button>
+        <button class="btn btn-gray" id="resetInBtn">重置</button>
+        <button class="btn btn-success" id="exportInQueryBtn">📤 导出查询结果</button>
+      </div>
+      <div class="mb-2 text-sm text-slate-600 no-print">
+        记录条数：<span id="inQueryCount" class="font-bold text-blue-700">0</span> 条　|　
+        数量合计：<span id="inQueryQtySum" class="font-bold text-blue-700">0</span>　|　
+        毛重合计：<span id="inQueryGrossSum" class="font-bold text-blue-700">0</span>　|　
+        净重合计：<span id="inQueryNetSum" class="font-bold text-blue-700">0</span>
+      </div>
+      <div class="table-wrap">
+        <table id="inQueryTable">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>入库单号GRN Number</th>
+              <th>入库日期GRN Date</th>
+              <th>存储位置Storage Location</th>
+              <th>供应商Supplier</th>
+              <th>需求部门Demand Department</th>
+              <th>需求计划单号</th>
+              <th>合同号Contract No.</th>
+              <th>采购单号PurchaseOrder</th>
+              <th>名称MaterialName</th>
+              <th>规格型号Specification</th>
+              <th>单位Unit</th>
+              <th>数量Quantity</th>
+              <th>毛重GrossWeight</th>
+              <th>净重NetWeight</th>
+              <th>车号License Plate NO.</th>
+              <th>送样sample submission</th>
+              <th>送检检测报告Submissionof Inspectionand TestingReport</th>
+              <th>送货单号Delivery Note</th>
+              <th>联合验收人</th>
+              <th>签收人</th>
+              <th>签收日期</th>
+            </tr>
+          </thead>
+          <tbody id="inQueryTableBody"></tbody>
+          <tfoot>
+            <tr style="font-weight:700;">
+              <td colspan="12" style="text-align:right;">合计 Total</td>
+              <td id="inQueryQtyTotal">0</td>
+              <td id="inQueryGrossTotal">0</td>
+              <td id="inQueryNetTotal">0</td>
+              <td colspan="7"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== 出库明细 ========== -->
+    <div id="tab-outQuery" class="tab-content card print-area hidden">
+      <div class="doc-header">
+        <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+        <div class="company-en">Gold Marine Tanzania Limited</div>
+        <div class="company-cn">金海坦桑尼亚有限公司</div>
+        <div class="doc-title">出库明细查询 / Stock Out Query</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 no-print items-end">
+        <div><label class="form-label">开始日期</label><input type="date" id="outStartDate" class="form-input"/></div>
+        <div><label class="form-label">结束日期</label><input type="date" id="outEndDate" class="form-input"/></div>
+        <div><label class="form-label">关键字</label><input type="text" id="outKeyword" class="form-input" style="width:200px;" placeholder="单号/物料/供应商等"/></div>
+        <button class="btn btn-primary" id="searchOutBtn">🔍 查询</button>
+        <button class="btn btn-gray" id="resetOutBtn">重置</button>
+        <button class="btn btn-success" id="exportOutQueryBtn">📤 导出查询结果</button>
+      </div>
+      <div class="mb-2 text-sm text-slate-600 no-print">
+        记录条数：<span id="outQueryCount" class="font-bold text-orange-700">0</span> 条　|　
+        数量合计：<span id="outQueryQtySum" class="font-bold text-orange-700">0</span>　|　
+        毛重合计：<span id="outQueryGrossSum" class="font-bold text-orange-700">0</span>　|　
+        净重合计：<span id="outQueryNetSum" class="font-bold text-orange-700">0</span>
+      </div>
+      <div class="table-wrap">
+        <table id="outQueryTable">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>出库单号GIN Number</th>
+              <th>出库日期GIN Date</th>
+              <th>存储位置Storage Location</th>
+              <th>供应商Supplier</th>
+              <th>需求部门Demand Department</th>
+              <th>需求计划单号</th>
+              <th>合同号Contract No.</th>
+              <th>采购单号PurchaseOrder</th>
+              <th>名称MaterialName</th>
+              <th>规格型号Specification</th>
+              <th>单位Unit</th>
+              <th>数量Quantity</th>
+              <th>毛重GrossWeight</th>
+              <th>净重NetWeight</th>
+              <th>车号License Plate NO.</th>
+              <th>送样sample submission</th>
+              <th>送检检测报告Submissionof Inspectionand TestingReport</th>
+              <th>送货单号Delivery Note</th>
+              <th>联合验收人</th>
+              <th>签收人</th>
+              <th>签收日期</th>
+            </tr>
+          </thead>
+          <tbody id="outQueryTableBody"></tbody>
+          <tfoot>
+            <tr style="font-weight:700;">
+              <td colspan="12" style="text-align:right;">合计 Total</td>
+              <td id="outQueryQtyTotal">0</td>
+              <td id="outQueryGrossTotal">0</td>
+              <td id="outQueryNetTotal">0</td>
+              <td colspan="7"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== 综合查询 ========== -->
+    <div id="tab-allQuery" class="tab-content card print-area hidden">
+      <div class="doc-header">
+        <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+        <div class="company-en">Gold Marine Tanzania Limited</div>
+        <div class="company-cn">金海坦桑尼亚有限公司</div>
+        <div class="doc-title">综合查询（入库+出库）/ Unified Query</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 no-print items-end">
+        <div><label class="form-label">开始日期</label><input type="date" id="allStartDate" class="form-input"/></div>
+        <div><label class="form-label">结束日期</label><input type="date" id="allEndDate" class="form-input"/></div>
+        <div><label class="form-label">类型</label>
+          <select id="allType" class="form-input">
+            <option value="all">全部</option>
+            <option value="in">入库</option>
+            <option value="out">出库</option>
+          </select>
+        </div>
+        <div><label class="form-label">关键字</label><input type="text" id="allKeyword" class="form-input" style="width:260px;" placeholder="单号/物料/规格/往来单位/合同/车号等"/></div>
+        <button class="btn btn-primary" id="searchAllBtn">🔍 查询</button>
+        <button class="btn btn-gray" id="resetAllBtn">重置</button>
+        <button class="btn btn-success" id="exportAllQueryBtn">📤 导出Excel</button>
+      </div>
+      <div class="mb-2 text-sm text-slate-600 no-print">
+        入库：<span id="allInSum" class="font-bold text-blue-700">0</span> 条 / 数量 <span id="allInQty" class="font-bold text-blue-700">0</span>　|　
+        出库：<span id="allOutSum" class="font-bold text-orange-700">0</span> 条 / 数量 <span id="allOutQty" class="font-bold text-orange-700">0</span>　|　
+        结余数量：<span id="allBalQty" class="font-bold text-slate-800">0</span>　|　
+        毛重合计：<span id="allGrossSum" class="font-bold">0</span>　|　
+        净重合计：<span id="allNetSum" class="font-bold">0</span>
+      </div>
+      <div class="table-wrap">
+        <table id="allQueryTable">
+          <thead>
+            <tr>
+              <th>类型</th>
+              <th>单号</th>
+              <th>日期</th>
+              <th>位置</th>
+              <th>往来单位</th>
+              <th>需求部门Demand Department</th>
+              <th>需求计划单号</th>
+              <th>合同号Contract No.</th>
+              <th>采购单号PurchaseOrder</th>
+              <th>名称MaterialName</th>
+              <th>规格型号Specification</th>
+              <th>单位Unit</th>
+              <th>入库数量Quantity</th>
+              <th>出库数量Quantity</th>
+              <th>毛重GrossWeight</th>
+              <th>净重NetWeight</th>
+              <th>车号License Plate NO.</th>
+              <th>备注</th>
+            </tr>
+          </thead>
+          <tbody id="allQueryTableBody"></tbody>
+          <tfoot>
+            <tr style="font-weight:700;">
+              <td colspan="12" style="text-align:right;">合计 Total</td>
+              <td id="allQtyInTotal">0</td>
+              <td id="allQtyOutTotal">0</td>
+              <td id="allGrossTotal">0</td>
+              <td id="allNetTotal">0</td>
+              <td colspan="2"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== 库存统计 ========== -->
+    <div id="tab-stock" class="tab-content card print-area hidden">
+      <div class="doc-header">
+        <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+        <div class="company-en">Gold Marine Tanzania Limited</div>
+        <div class="company-cn">金海坦桑尼亚有限公司</div>
+        <div class="doc-title">库存统计 / Inventory Statistics</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 no-print items-end">
+        <div><label class="form-label">起始日期</label><input type="date" id="stockStartDate" class="form-input"/></div>
+        <div><label class="form-label">截止日期</label><input type="date" id="stockStatDate" class="form-input"/></div>
+        <div><label class="form-label">关键字</label><input type="text" id="stockKeyword" class="form-input" style="width:200px;" placeholder="物料编号Material No./名称/规格"/></div>
+        <button class="btn btn-primary" id="searchStockBtn">🔍 查询</button>
+        <button class="btn btn-gray" id="resetStockBtn">↺ 重置</button>
+        <button class="btn btn-success" id="exportStockBtn">📤 导出Excel</button>
+        <button class="btn btn-warn" onclick="window.print()">🖨 打印</button>
+      </div>
+      <div class="mb-2 text-sm text-slate-600 no-print">
+        统计区间：<span id="stockRangeText" class="font-bold text-slate-700">全部 ~ 今天</span>　
+        物料种类：<span id="totalStockItems" class="font-bold text-blue-700">0</span>　
+        入库总量：<span id="totalInSum" class="font-bold text-green-700">0</span>　
+        出库总量：<span id="totalOutSum" class="font-bold text-orange-700">0</span>　
+        库存总量：<span id="totalStockSum" class="font-bold text-red-700">0</span>
+      </div>
+      <div class="table-wrap">
+        <table id="stockTable">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>物料编号Material No.</th>
+              <th>名称MaterialName</th>
+              <th>规格型号Specification</th>
+              <th>单位Unit</th>
+              <th>累计入库Quantity</th>
+              <th>累计出库Quantity</th>
+              <th>当前库存Quantity</th>
+              <th>备注</th>
+            </tr>
+          </thead>
+          <tbody id="stockTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== 物料表 ========== -->
+    <div id="tab-materials" class="tab-content card print-area hidden">
+      <div class="doc-header">
+        <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+        <div class="company-en">Gold Marine Tanzania Limited</div>
+        <div class="company-cn">金海坦桑尼亚有限公司</div>
+        <div class="doc-title">物料表 / Material List</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 no-print">
+        <button class="btn btn-primary" id="addMaterialBtn">+ 新增物料</button>
+        <button class="btn btn-success" id="exportMaterialBtn">📤 导出Excel</button>
+        <button class="btn btn-warn" onclick="window.print()">🖨 打印</button>
+        <input type="text" id="materialSearch" class="form-input" style="width:220px;" placeholder="搜索编号/名称/规格"/>
+      </div>
+      <div class="table-wrap">
+        <table id="materialTable">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>物料编号Material No.</th>
+              <th>名称MaterialName</th>
+              <th>规格型号Specification</th>
+              <th>单位Unit</th>
+              <th>备注</th>
+              <th class="no-print">操作</th>
+            </tr>
+          </thead>
+          <tbody id="materialTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== 供应商表 ========== -->
+    <div id="tab-suppliers" class="tab-content card print-area hidden">
+      <div class="doc-header">
+        <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+        <div class="company-en">Gold Marine Tanzania Limited</div>
+        <div class="company-cn">金海坦桑尼亚有限公司</div>
+        <div class="doc-title">供应商表 / Suppliers</div>
+      </div>
+      <div class="flex flex-wrap gap-2 mb-3 no-print">
+        <button class="btn btn-primary" id="addPartnerBtn">+ 新增供应商</button>
+        <button class="btn btn-success" id="exportPartnerBtn">📤 导出Excel</button>
+        <button class="btn btn-warn" onclick="window.print()">🖨 打印</button>
+        <input type="text" id="supplierSearch" class="form-input" style="width:260px;" placeholder="搜索名称/税号/联系人"/>
+      </div>
+      <div class="table-wrap">
+        <table id="supplierTable">
+          <thead>
+            <tr>
+              <th>序号</th>
+              <th>名称</th>
+              <th>地址</th>
+              <th>VRN增值税号</th>
+              <th>TIN税号</th>
+              <th>联系人</th>
+              <th>E-mail</th>
+              <th>合同号Contract No.</th>
+              <th>采购单号PurchaseOrder</th>
+              <th>计划需求单号</th>
+              <th>备注</th>
+              <th class="no-print">操作</th>
+            </tr>
+          </thead>
+          <tbody id="supplierTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ========== Excel导入导出 ========== -->
+    <div id="tab-dataManage" class="tab-content card print-area hidden">
+      <div class="doc-header">
+        <img class="doc-logo" src="assets/Logo.png" alt="logo" onerror="this.style.display='none'">
+        <div class="company-en">Gold Marine Tanzania Limited</div>
+        <div class="company-cn">金海坦桑尼亚有限公司</div>
+        <div class="doc-title">数据导入导出 / Data Import & Export</div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- 物料 -->
+        <div class="card border border-blue-200">
+          <h4 class="font-bold text-blue-800 mb-2">📦 物料表导入</h4>
+          <div class="text-xs text-slate-600 mb-3 leading-relaxed">
+            字段顺序：物料编号Material No.、名称MaterialName、规格型号Specification、单位Unit、备注<br>
+            支持 .xlsx/.xls 文件；可先下载模板填写后再导入。
+          </div>
+          <div class="flex flex-wrap gap-2 no-print">
+            <button class="btn btn-gray" onclick="downloadTemplate('material')">📄 下载模板</button>
+            <label class="btn btn-success cursor-pointer">
+              📥 选择文件导入
+              <input type="file" accept=".xlsx,.xls" class="hidden" onchange="importExcel(event,'material')"/>
+            </label>
+            <button class="btn btn-warn" onclick="exportTable('material','物料表')">📤 导出当前数据</button>
+            <button class="btn btn-danger" onclick="clearData('material')">🗑 清空数据</button>
+          </div>
+        </div>
+        <!-- 供应商 -->
+        <div class="card border border-blue-200">
+          <h4 class="font-bold text-blue-800 mb-2">👥 供应商表导入</h4>
+          <div class="text-xs text-slate-600 mb-3 leading-relaxed">
+            字段顺序：名称、地址、VRN增值税号、TIN税号、联系人、E-mail、备注、合同号Contract No.、采购单号PurchaseOrder、计划需求单号
+          </div>
+          <div class="flex flex-wrap gap-2 no-print">
+            <button class="btn btn-gray" onclick="downloadTemplate('supplier')">📄 下载模板</button>
+            <label class="btn btn-success cursor-pointer">
+              📥 选择文件导入
+              <input type="file" accept=".xlsx,.xls" class="hidden" onchange="importExcel(event,'supplier')"/>
+            </label>
+            <button class="btn btn-warn" onclick="exportTable('supplier','供应商表')">📤 导出当前数据</button>
+            <button class="btn btn-danger" onclick="clearData('supplier')">🗑 清空数据</button>
+          </div>
+        </div>
+        <!-- 入库记录 -->
+        <div class="card border border-green-200">
+          <h4 class="font-bold text-green-800 mb-2">📥 入库记录导入</h4>
+          <div class="text-xs text-slate-600 mb-3 leading-relaxed">
+            字段顺序：入库单号GRN Number、入库日期GRN Date、存储位置Storage Location、供应商Supplier、需求部门Demand Department、需求计划单号、合同号Contract No.、采购单号PurchaseOrder、名称MaterialName、规格型号Specification、单位Unit、数量Quantity、毛重GrossWeight、净重NetWeight、车号License Plate NO.、送样sample submission、送检检测报告Submissionof Inspectionand TestingReport、送货单号Delivery Note、联合验收人、签收人、签收日期
+          </div>
+          <div class="flex flex-wrap gap-2 no-print">
+            <button class="btn btn-gray" onclick="downloadTemplate('stockIn')">📄 下载模板</button>
+            <label class="btn btn-success cursor-pointer">
+              📥 选择文件导入
+              <input type="file" accept=".xlsx,.xls" class="hidden" onchange="importExcel(event,'stockIn')"/>
+            </label>
+            <button class="btn btn-warn" onclick="exportTable('stockIn','入库记录')">📤 导出当前数据</button>
+            <button class="btn btn-danger" onclick="clearData('stockIn')">🗑 清空数据</button>
+          </div>
+        </div>
+        <!-- 出库记录 -->
+        <div class="card border border-orange-200">
+          <h4 class="font-bold text-orange-800 mb-2">📤 出库记录导入</h4>
+          <div class="text-xs text-slate-600 mb-3 leading-relaxed">
+            字段顺序：出库单号GIN Number、出库日期GIN Date、存储位置Storage Location、供应商Supplier、需求部门Demand Department、需求计划单号、合同号Contract No.、采购单号PurchaseOrder、名称MaterialName、规格型号Specification、单位Unit、数量Quantity、毛重GrossWeight、净重NetWeight、车号License Plate NO.、送样sample submission、送检检测报告Submissionof Inspectionand TestingReport、送货单号Delivery Note、联合验收人、签收人、签收日期
+          </div>
+          <div class="flex flex-wrap gap-2 no-print">
+            <button class="btn btn-gray" onclick="downloadTemplate('stockOut')">📄 下载模板</button>
+            <label class="btn btn-success cursor-pointer">
+              📥 选择文件导入
+              <input type="file" accept=".xlsx,.xls" class="hidden" onchange="importExcel(event,'stockOut')"/>
+            </label>
+            <button class="btn btn-warn" onclick="exportTable('stockOut','出库记录')">📤 导出当前数据</button>
+            <button class="btn btn-danger" onclick="clearData('stockOut')">🗑 清空数据</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- JSON 整库备份与恢复 -->
+      <div class="card mt-4 border border-indigo-200" style="background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 50%, #e0e7ff 100%);">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div class="flex items-center gap-2">
+            <h4 class="font-bold text-indigo-800 text-base">🗄 JSON 整库备份与恢复</h4>
+            <span class="text-xs text-slate-500">一键备份/恢复全部数据</span>
+          </div>
+          <div class="text-xs text-slate-400" id="jsonLastBackup">尚未导出备份</div>
+        </div>
+        <!-- 数据统计 -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div class="bg-white rounded-lg p-3 text-center border border-indigo-100 shadow-sm">
+            <div class="text-2xl font-bold text-indigo-700" id="jsonStatMaterial">0</div>
+            <div class="text-xs text-slate-500 mt-1">📦 物料</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 text-center border border-indigo-100 shadow-sm">
+            <div class="text-2xl font-bold text-indigo-700" id="jsonStatSupplier">0</div>
+            <div class="text-xs text-slate-500 mt-1">👥 供应商</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 text-center border border-indigo-100 shadow-sm">
+            <div class="text-2xl font-bold text-indigo-700" id="jsonStatIn">0</div>
+            <div class="text-xs text-slate-500 mt-1">📥 入库记录</div>
+          </div>
+          <div class="bg-white rounded-lg p-3 text-center border border-indigo-100 shadow-sm">
+            <div class="text-2xl font-bold text-indigo-700" id="jsonStatOut">0</div>
+            <div class="text-xs text-slate-500 mt-1">📤 出库记录</div>
+          </div>
+        </div>
+        <!-- 操作按钮 -->
+        <div class="flex flex-wrap gap-2 no-print">
+          <button class="btn btn-primary" onclick="exportJSONBackup()">📥 导出 JSON 备份</button>
+          <label class="btn btn-success cursor-pointer">
+            📂 从 JSON 文件恢复
+            <input type="file" accept=".json,application/json" class="hidden" onchange="importJSONBackup(event)"/>
+          </label>
+          <button class="btn btn-gray" onclick="viewJSONData()">👁 查看当前数据</button>
+        </div>
+        <!-- 跨电脑数据同步：数据随网页文件走 -->
+        <div class="mt-4 bg-white/80 rounded-lg p-3 border border-indigo-200 no-print">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="text-xs leading-relaxed" id="jsonFileSync"></div>
+            <div class="flex gap-2">
+              <button class="btn btn-primary btn-sm" onclick="bindDataFile()">💾 保存数据到文件（跨电脑同步）</button>
+              <button class="btn btn-success btn-sm hidden" id="jsonReconnectBtn" onclick="reconnectDataFile()">🔄 重新连接数据文件</button>
+            </div>
+          </div>
+          <div class="mt-2 text-xs text-slate-500 leading-relaxed">
+            数据默认只存在本机浏览器，换电脑打开文件时看不到。点上方按钮并选中本网页文件后，数据会自动写进文件内部：文件经 OneDrive/U盘 带到任何电脑打开，数据自动恢复，无需再导入 JSON。每次换电脑首次使用时，如有授权提示请点「允许」。
+          </div>
+        </div>
+        <!-- 说明 -->
+        <div class="mt-3 text-xs text-slate-600 leading-relaxed bg-white/60 rounded-lg p-3 border border-indigo-100">
+          <span class="font-semibold text-indigo-700">说明：</span>JSON 备份包含全部数据（物料、供应商、入库、出库）的完整快照，适合整机迁移、定期归档或跨浏览器迁移。恢复时可选「合并追加」或「覆盖替换」模式。Excel 导入仅适用于单表批量录入，JSON 备份则为完整数据快照。
+        </div>
+      </div>
+
+      <div class="card mt-4 border-slate-200">
+        <h4 class="font-bold text-slate-700 mb-2">💡 使用提示</h4>
+        <ul class="text-xs text-slate-600 leading-relaxed list-disc pl-5 space-y-1">
+          <li>入库单号：GRN + 入库日期(YYYYMMDD) + 两位序号；出库单号：GIN + 出库日期(YYYYMMDD) + 两位序号。序号取当日已有单据最大序号+1（当日无单据从01开始）。</li>
+          <li>签收日期默认为当天；修改单据日期后，未保存的新单会按新日期重新生成单号。</li>
+          <li>选择供应商自动带出合同号、采购单号、需求计划单号。</li>
+          <li>选择物料代码自动带出名称、规格型号、单位；物料代码在打印时隐藏。</li>
+          <li>规格型号支持多行文本，打印与导出自动换行。</li>
+          <li>数据默认保存在本机浏览器，换电脑打开文件时数据不会自动跟过去：请使用「保存数据到文件」把数据写入网页文件（推荐，OneDrive 同步后其他电脑打开即自动恢复），或定期导出 JSON 备份。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 通用弹窗 ============ -->
+<div id="modal" class="fixed inset-0 modal-bg hidden items-center justify-center z-50 no-print">
+  <div class="bg-white rounded-xl p-6 w-[820px] max-h-[92vh] overflow-y-auto shadow-2xl">
+    <div class="flex justify-between items-center mb-4">
+      <h3 id="modalTitle" class="text-lg font-bold text-slate-800">标题</h3>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+    </div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+<div id="toastBox"></div>
+
+<!-- 数据内嵌块：保存着随网页文件走的数据快照（由「保存数据到文件」自动写入，请勿手工编辑）。
+     换电脑/换浏览器打开本文件时，若本机没有数据会自动恢复；文件数据更新时会询问是否采用。 -->
+<script type="application/json" id="embeddedDB">
+{"app":"jinhai-wms","schema":1,"savedAt":0,"data":null}
+</script>
+
+<style id="paginate-print-style">
+  /* ===== 打印窗口专用：多页分页与页码样式（body.print-win 仅打印窗口使用，主页面不受影响） =====
+     尺寸依据 @page { size: A4 landscape; margin: 8mm }：可打印区 281mm×194mm，
+     body 左右各留 4mm 内边距后内容宽 273mm，与主页面 @media print 规则一致。 */
+  body.print-win { width: 281mm !important; margin: 0 auto !important; box-sizing: border-box !important; background: #fff !important; }
+  @media screen {
+    body.print-win { padding: 4mm !important; }
+    .print-page { margin-bottom: 8px; box-shadow: 0 2px 10px rgba(15,23,42,.18); }
+  }
+  /* 每页一个固定高度容器（略小于 194mm 可打印高度，防止产生空白页），页码绝对定位于页底 */
+  .print-page { position: relative; height: 193.8mm; overflow: hidden; page-break-after: always; break-after: page; }
+  .print-page:last-child { page-break-after: auto; break-after: auto; }
+  .print-page-num { position: absolute; left: 0; right: 0; bottom: 0; text-align: center; font-size: 9px; color: #475569; line-height: 1.6; }
+  /* 分页后 tbody 行序重新计数，隔行底色改按原始行号（doc-row-even）保持跨页一致 */
+  body.print-win .doc-item-table tbody tr:nth-child(even) td { background: transparent; }
+  body.print-win .doc-item-table tbody tr.doc-row-even td { background: #f8fafc; }
+</style>
+<script id="paginate-print-script">
+/* ===== 打印窗口专用：多页分页与页码脚本 =====
+   由 printDoc 复制进打印窗口执行（主页面缺少 __PRINT_WINDOW__ 标志，自动跳过）。
+   按 A4 横向可打印高度把明细行分配到各页：每页重复表头、合计行与签名栏固定在
+   最后一页、每页底部显示「第 X 页 / 共 Y 页」。分页失败时按原样整页打印。 */
+(function(){
+  if(!window.__PRINT_WINDOW__) return;
+  var MM = 96 / 25.4;      /* 1mm 对应的 CSS 像素数 */
+  var PAGE_H = 194 * MM;   /* A4 横向 210mm - 上下页边距 8mm×2（须与 @page 保持一致） */
+  var FOOT_H = 7 * MM;     /* 页码栏预留高度 */
+  var SAFE_H = 2 * MM;     /* 测量安全余量 */
+  var USE_H = PAGE_H - FOOT_H - SAFE_H;
+
+  function paginate(){
+    var doc = document.querySelector('.doc-form-wrapper');
+    if(!doc) return;
+    var itemTable = doc.querySelector('.doc-item-table');
+    if(!itemTable || !itemTable.tBodies.length) return;
+    var thead = itemTable.tHead;
+    var tbody = itemTable.tBodies[0];
+    var tfoot = itemTable.tFoot;
+    var rows = Array.prototype.slice.call(tbody.rows);
+    /* 明细表之前：页眉 + 单据信息表；之后：签名栏（.no-print 元素已被移除） */
+    var headEls = [], tailEls = [], n;
+    for(n = itemTable.previousElementSibling; n; n = n.previousElementSibling) headEls.unshift(n);
+    for(n = itemTable.nextElementSibling; n; n = n.nextElementSibling) tailEls.push(n);
+
+    /* —— 测量：窗口已按打印样式与打印宽度布局，测得高度即实际打印高度 —— */
+    var docRect = doc.getBoundingClientRect();
+    var headH = itemTable.getBoundingClientRect().top - docRect.top;
+    var theadH = thead ? thead.getBoundingClientRect().height : 0;
+    var tfootH = tfoot ? tfoot.getBoundingClientRect().height : 0;
+    var tailH = 0;
+    tailEls.forEach(function(el){
+      var cs = getComputedStyle(el);
+      tailH += el.getBoundingClientRect().height + (parseFloat(cs.marginTop) || 0) + (parseFloat(cs.marginBottom) || 0);
+    });
+    var rowHs = rows.map(function(r){ return r.getBoundingClientRect().height; });
+
+    /* —— 行分配：最后一行所在页需同时容纳合计行 + 签名栏 —— */
+    var tailNeed = tfootH + tailH;
+    var pages = [], cur = null;
+    function newPage(){ cur = { rows: [], h: theadH }; pages.push(cur); }
+    newPage();
+    cur.h += headH;               /* 首页还包含页眉与单据信息表 */
+    for(var i = 0; i < rows.length; i++){
+      if(i % 2 === 1) rows[i].classList.add('doc-row-even');   /* 记录原始行序奇偶 */
+      var need = rowHs[i] + (i === rows.length - 1 ? tailNeed : 0);
+      if(cur.h + need > USE_H && cur.rows.length > 0) newPage();
+      cur.rows.push(rows[i]);
+      cur.h += rowHs[i];
+    }
+
+    /* —— 重建为分页结构 —— */
+    var total = pages.length;
+    var frag = document.createDocumentFragment();
+    pages.forEach(function(p, idx){
+      var page = document.createElement('div');
+      page.className = 'print-page';
+      if(idx === 0) headEls.forEach(function(el){ page.appendChild(el); });
+      var tbl = itemTable.cloneNode(false);                     /* 仅复制表壳（类名/样式） */
+      tbl.removeAttribute('id');
+      if(thead) tbl.appendChild(thead.cloneNode(true));         /* 每页重复表头 */
+      var tb = document.createElement('tbody');
+      p.rows.forEach(function(r){ tb.appendChild(r); });        /* 移动原始行（含已转换文本） */
+      tbl.appendChild(tb);
+      if(idx === total - 1 && tfoot) tbl.appendChild(tfoot.cloneNode(true));  /* 合计行只在末页 */
+      page.appendChild(tbl);
+      if(idx === total - 1) tailEls.forEach(function(el){ page.appendChild(el); });
+      var num = document.createElement('div');
+      num.className = 'print-page-num';
+      num.textContent = '第 ' + (idx + 1) + ' 页 / 共 ' + total + ' 页';
+      page.appendChild(num);
+      frag.appendChild(page);
+    });
+    doc.parentNode.replaceChild(frag, doc);
+  }
+
+  var ok = false;
+  try{ paginate(); ok = true; }catch(e){ /* 分页失败：保持原样整页打印 */ }
+
+  /* —— 打印触发（与打开方 printDoc 的触发通过 __docPrinted__ 标志互斥） —— */
+  function doPrint(){
+    if(window.__docPrinted__) return;
+    window.__docPrinted__ = true;
+    try{ window.focus(); window.print(); }catch(e){}
+    try{ window.close(); }catch(e){}
+  }
+  window.addEventListener('load', function(){ setTimeout(doPrint, 300); });
+  setTimeout(doPrint, 2500);
+})();
+</script>
+
+<script>
+  /* ============ 数据存储 ============ */
+  const STORE_KEY = 'jinhai_wms_v2';
+  const META_KEY = 'jinhai_wms_v2_meta';  /* 本机数据最后变更时间戳，用于与文件内嵌数据比较新旧 */
+  let db = { materials:[], suppliers:[], stockIn:[], stockOut:[] };
+  let lastDataChangeAt = 0;
+  /* 打开页面时的纯净源码快照：供「保存数据到文件」重写整个网页文件（仅替换内嵌数据块） */
+  const PRISTINE_HTML = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+
+  function lsGet(k){
+    try{ return localStorage.getItem(k); }catch(e){ return null; }
+  }
+  function lsSet(k, v){
+    try{ localStorage.setItem(k, v); }catch(e){}
+  }
+  function ensureDB(){
+    if(!Array.isArray(db.materials)) db.materials=[];
+    if(!Array.isArray(db.suppliers)) db.suppliers=[];
+    if(!Array.isArray(db.stockIn)) db.stockIn=[];
+    if(!Array.isArray(db.stockOut)) db.stockOut=[];
+  }
+  function loadDB(){
+    const s = lsGet(STORE_KEY);
+    if(s){ try{ db = JSON.parse(s); }catch(e){} }
+    ensureDB();
+    /* —— 文件内嵌数据：让数据随网页文件走（OneDrive/U盘同步到其他电脑后自动恢复） —— */
+    let emb = null;
+    try{
+      const el = document.getElementById('embeddedDB');
+      if(el && el.textContent.trim()) emb = JSON.parse(el.textContent);
+    }catch(e){ emb = null; }
+    const embData = (emb && emb.data && typeof emb.data === 'object') ? emb.data : null;
+    if(!embData) return;                       /* 文件内没有数据（尚未使用「保存数据到文件」） */
+    const embAt = +emb.savedAt || 0;
+    const localAt = +lsGet(META_KEY) || 0;
+    const localEmpty = !db.materials.length && !db.suppliers.length && !db.stockIn.length && !db.stockOut.length;
+    if(localEmpty){
+      /* 本机没有数据：直接恢复（换电脑/换浏览器打开文件的典型场景） */
+      db = embData; ensureDB();
+      saveDB();
+      toast('已从网页文件恢复数据：物料 '+db.materials.length+'、供应商 '+db.suppliers.length+'、入库 '+db.stockIn.length+'、出库 '+db.stockOut.length+' 条','success');
+      return;
+    }
+    if(embAt > localAt || !localAt){
+      /* 文件数据比本机新（另一台电脑保存过），或本机数据时间未知：询问是否采用文件数据 */
+      const when = embAt ? new Date(embAt).toLocaleString('zh-CN') : '时间未知';
+      const msg = '网页文件内含有其他电脑保存的数据（'+when+'）：\n'+
+        '物料 '+embData.materials.length+' 条、供应商 '+embData.suppliers.length+' 条、入库 '+embData.stockIn.length+' 条、出库 '+embData.stockOut.length+' 条。\n\n'+
+        '是否用文件中的数据覆盖本机当前数据？\n（点「取消」则继续使用本机数据）';
+      if(confirm(msg)){
+        db = embData; ensureDB(); saveDB();
+        toast('已加载网页文件中的数据','success');
+      }
+    }
+  }
+  function saveDB(){
+    lastDataChangeAt = Date.now();
+    lsSet(STORE_KEY, JSON.stringify(db));
+    lsSet(META_KEY, String(lastDataChangeAt));
+    scheduleFileSync();   /* 已绑定网页文件时，数据变动自动写回文件 */
+  }
+
+  /* ============ 数据随网页文件同步（跨电脑） ============ */
+  let fileHandle = null;         /* 已绑定的网页文件句柄（File System Access API） */
+  let pendingFileHandle = null;  /* 上次会话绑定过、本次打开待重新授权的句柄 */
+  let fileSyncTimer = null;
+  let lastFileSyncAt = 0;
+
+  /* 生成含最新数据的完整网页：以打开时的源码为模板，仅替换内嵌数据块 */
+  function buildFileHTML(){
+    const payload = JSON.stringify({ app:'jinhai-wms', schema:1, savedAt: lastDataChangeAt || Date.now(), data: db })
+      .replace(/</g, '\\u003c');   /* 防止数据中的标签字符截断 script 块 */
+    return PRISTINE_HTML.replace(
+      /(<script type="application\/json" id="embeddedDB">)[\s\S]*?(<\/script>)/,
+      function(all, open, close){ return open + '\n' + payload + '\n' + close; }
+    );
+  }
+  async function writeEmbeddedData(manual){
+    if(!fileHandle) return;
+    try{
+      const w = await fileHandle.createWritable();
+      await w.write(buildFileHTML());
+      await w.close();
+      lastFileSyncAt = Date.now();
+      renderFileSyncStatus();
+      if(manual) toast('数据已写入网页文件，OneDrive/U盘 同步后即可在其他电脑打开使用','success');
+    }catch(err){
+      if(manual) toast('写入文件失败：'+(err.message || err),'error');
+    }
+  }
+  function scheduleFileSync(){
+    if(!fileHandle) return;
+    clearTimeout(fileSyncTimer);
+    fileSyncTimer = setTimeout(function(){ writeEmbeddedData(false); }, 2500);
+  }
+  /* 绑定当前网页文件：之后数据变动自动写回该文件（Chrome/Edge 支持；其他浏览器降级为下载完整网页） */
+  async function bindDataFile(){
+    if(!window.showOpenFilePicker){ downloadDataHTML(); return; }
+    try{
+      const picked = await window.showOpenFilePicker({
+        multiple: false,
+        types: [{ description: '网页文件', accept: { 'text/html': ['.html', '.htm'] } }]
+      });
+      const h = picked[0];
+      /* 安全检查：确认选中的是本系统的网页文件，避免误覆盖其他文件 */
+      let isOurs = false;
+      try{
+        const f = await h.getFile();
+        const text = await f.text();
+        isOurs = text.indexOf('id="embeddedDB"') >= 0 || text.indexOf('金海仓库管理系统') >= 0;
+      }catch(e){ isOurs = true; }
+      if(!isOurs){
+        if(!confirm('选中的文件看起来不是本仓库管理系统的网页文件。\n仍要用本系统页面（含全部数据）覆盖它吗？')) return;
+      }
+      const perm = await h.requestPermission({ mode: 'readwrite' });
+      if(perm !== 'granted'){ toast('未获得文件写入权限，无法自动保存到文件','error'); return; }
+      fileHandle = h; pendingFileHandle = null;
+      saveFileHandle(h);
+      await writeEmbeddedData(true);
+      renderFileSyncStatus();
+    }catch(e){ /* 用户取消选择 */ }
+  }
+  async function reconnectDataFile(){
+    if(!pendingFileHandle) return;
+    try{
+      const perm = await pendingFileHandle.requestPermission({ mode: 'readwrite' });
+      if(perm === 'granted'){
+        fileHandle = pendingFileHandle; pendingFileHandle = null;
+        renderFileSyncStatus();
+        writeEmbeddedData(false);
+        toast('已重新连接网页文件，数据变动将自动保存','success');
+      } else { toast('未获得文件写入权限','error'); }
+    }catch(e){}
+  }
+  /* 文件句柄存入 IndexedDB：下次打开本文件时尝试恢复绑定（浏览器可能要求重新授权一次） */
+  function idbOpen(){
+    return new Promise(function(res, rej){
+      const r = indexedDB.open('jinhai_wms_fs', 1);
+      r.onupgradeneeded = function(){ r.result.createObjectStore('handles'); };
+      r.onsuccess = function(){ res(r.result); };
+      r.onerror = function(){ rej(r.error); };
+    });
+  }
+  async function saveFileHandle(h){
+    try{
+      const idb = await idbOpen();
+      await new Promise(function(res, rej){
+        const t = idb.transaction('handles', 'readwrite');
+        t.objectStore('handles').put(h, 'html');
+        t.oncomplete = res;
+        t.onerror = function(){ rej(t.error); };
+      });
+    }catch(e){}
+  }
+  async function restoreFileBinding(){
+    try{
+      const idb = await idbOpen();
+      const h = await new Promise(function(res, rej){
+        const t = idb.transaction('handles', 'readonly');
+        const q = t.objectStore('handles').get('html');
+        q.onsuccess = function(){ res(q.result); };
+        q.onerror = function(){ rej(q.error); };
+      });
+      if(!h) return;
+      const p = await h.queryPermission({ mode: 'readwrite' });
+      if(p === 'granted'){ fileHandle = h; renderFileSyncStatus(); }
+      else { pendingFileHandle = h; renderFileSyncStatus(); }
+    }catch(e){}
+  }
+  /* 不支持文件写入 API 的浏览器：下载含数据的完整网页文件，替换 OneDrive/U盘 中的原文件即可 */
+  function downloadDataHTML(){
+    const blob = new Blob([buildFileHTML()], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = '基戈马工程材料仓库管理系统.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('已下载含数据的网页文件，请用它替换 OneDrive/U盘 中的原文件','success');
+  }
+  /* 文件同步状态显示（JSON 备份卡片内） */
+  function renderFileSyncStatus(){
+    const el = document.getElementById('jsonFileSync');
+    if(!el) return;
+    const btn = document.getElementById('jsonReconnectBtn');
+    if(fileHandle){
+      el.innerHTML = '<span class="font-semibold text-green-700">✅ 数据文件已连接，数据变动自动保存到文件</span>'+
+        (lastFileSyncAt ? '<span class="text-slate-500">（上次写入 '+new Date(lastFileSyncAt).toLocaleTimeString('zh-CN')+'）</span>' : '');
+      if(btn) btn.classList.add('hidden');
+    } else if(pendingFileHandle){
+      el.innerHTML = '<span class="font-semibold text-amber-700">⚠ 数据文件需要重新授权（浏览器安全要求，点右侧按钮重连）</span>';
+      if(btn) btn.classList.remove('hidden');
+    } else {
+      el.innerHTML = '<span class="text-slate-600">未绑定 —— 绑定本网页文件后，数据会自动写进文件内部，随 OneDrive/U盘 带到任何电脑</span>';
+      if(btn) btn.classList.add('hidden');
+    }
+  }
+  /* 页面隐藏或关闭前，尽快把待写入的数据落盘 */
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden' && fileSyncTimer) writeEmbeddedData(false);
+  });
+  window.addEventListener('pagehide', function(){
+    if(fileSyncTimer) writeEmbeddedData(false);
+  });
+
+  /* ============ 工具函数 ============ */
+  function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+  function fmtDate(d){
+    if(!d) return '';
+    const dt = typeof d==='string'? new Date(d.replace(/-/g,'/')) : new Date(d);
+    if(isNaN(dt)) return d;
+    return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+  }
+  function today(){ return fmtDate(new Date()); }
+  function todayCn(){
+    const d = new Date();
+    return (d.getMonth()+1)+'月'+d.getDate()+'日';
+  }
+  /* Excel 导入日期转换：支持 Date 对象、Excel 日期序列号(如46253)、各种字符串格式 */
+  function excelDate(v){
+    if(v===null || v===undefined || v==='') return '';
+    if(v instanceof Date) return fmtDate(v);
+    if(typeof v==='number'){
+      if(v>20000 && v<80000){ /* Excel 序列号：自1899-12-30起的天数，25569=1970-01-01 */
+        const ms = Math.round((v - 25569) * 86400000);
+        const dt = new Date(ms);
+        return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');
+      }
+      return String(v);
+    }
+    const s = String(v).trim();
+    const m = s.match(/^(\d{4})[-\/年.](\d{1,2})[-\/月.](\d{1,2})日?$/);
+    if(m) return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');
+    return fmtDate(s);
+  }
+  /* 签收日期转 YYYY-MM-DD：兼容旧数据「8月21日」格式（年份取单据日期） */
+  function signDateToISO(v, refDate){
+    const iso = excelDate(v);
+    if(/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso;
+    const m = String(v||'').match(/(\d{1,2})月(\d{1,2})日?/);
+    if(m){
+      const y = (refDate && /^\d{4}/.test(refDate)) ? refDate.slice(0,4) : String(new Date().getFullYear());
+      return y+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
+    }
+    return iso || '';
+  }
+  function todayShort(){
+    const d = new Date();
+    return String(d.getFullYear())+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  }
+  function toast(msg, type='info'){
+    const el = document.createElement('div');
+    el.className = 'toast '+type;
+    el.textContent = msg;
+    document.getElementById('toastBox').appendChild(el);
+    setTimeout(()=>el.remove(),2500);
+  }
+  function openModal(title, html){
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = html;
+    const m = document.getElementById('modal');
+    m.classList.remove('hidden'); m.classList.add('flex');
+  }
+  function closeModal(){
+    const m=document.getElementById('modal');
+    m.classList.add('hidden'); m.classList.remove('flex');
+  }
+
+  /* ============ 单据序列号生成 ============ */
+  /* 规则：前缀 + 入库/出库日期(YYYYMMDD) + 两位序号
+     序号 = 当日已有单据最大序号 + 1（当日无单据则从01开始） */
+  function getNextSerial(prefix, dateStr){
+    const ymd = dateStr.replace(/-/g,'');
+    const arr = (prefix==='GRN' ? db.stockIn : db.stockOut);
+    let max = 0;
+    arr.forEach(r => {
+      if(r.no && r.no.startsWith(prefix+ymd)){
+        const seq = parseInt(r.no.slice(prefix.length+ymd.length), 10);
+        if(!isNaN(seq) && seq > max) max = seq;
+      }
+    });
+    return prefix+ymd+String(max+1).padStart(2,'0');
+  }
+
+  /* ============ 单据状态管理 ============ */
+  let currentDoc = { in: null, out: null };
+  function renderSupplierOptions(selectId, val){
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = '<option value="">请选择供应商</option>';
+    db.suppliers.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.name; opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+    if(val) sel.value = val;
+  }
+  function getMaterialOptions(){
+    let html = '<option value="">请选择</option>';
+    db.materials.forEach(m => {
+      html += '<option value="'+esc(m.no)+'">'+esc(m.no+' '+m.name)+'</option>';
+    });
+    return html;
+  }
+  function onSupplierChange(type, supplierName){
+    const s = db.suppliers.find(x => x.name === supplierName);
+    if(s){
+      document.getElementById(type+'DocContract').value = s.contract || '';
+      document.getElementById(type+'DocOrder').value = s.order || '';
+      document.getElementById(type+'DocPlan').value = s.plan || '';
+    } else {
+      document.getElementById(type+'DocContract').value = '';
+      document.getElementById(type+'DocOrder').value = '';
+      document.getElementById(type+'DocPlan').value = '';
+    }
+    /* 未保存的新单在列表第一行显示表单实时内容，供应商变化后同步刷新 */
+    if(!currentDoc[type]) renderDocList(type);
+  }
+  function onMaterialCodeChange(row, type, code){
+    const m = db.materials.find(x => x.no === code);
+    if(!m) return;
+    row.querySelector('.item-name').value = m.name;
+    row.querySelector('.item-spec').value = m.spec;
+    row.querySelector('.item-unit').value = m.unit;
+    computeDocTotal();
+  }
+  function createDocItemRow(type, idx, item){
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+idx+'</td>'+
+      '<td class="print-hide-col"><select class="item-code form-input" onchange="onMaterialCodeChange(this.parentElement.parentElement,\''+type+'\',this.value)">'+getMaterialOptions()+'</select></td>'+
+      '<td><input type="text" class="item-name form-input" readonly style="background:#f8fafc;"></td>'+
+      '<td><textarea class="item-spec form-input" rows="1" readonly style="background:#f8fafc;"></textarea></td>'+
+      '<td><input type="text" class="item-unit form-input" readonly style="background:#f8fafc;"></td>'+
+      '<td><input type="text" inputmode="decimal" class="item-qty form-input" oninput="computeDocTotal()"></td>'+
+      '<td><input type="text" inputmode="decimal" class="item-gross form-input"></td>'+
+      '<td><input type="text" inputmode="decimal" class="item-net form-input"></td>'+
+      '<td><input type="text" class="item-car form-input"></td>'+
+      '<td><input type="text" class="item-sample form-input"></td>'+
+      '<td><input type="text" class="item-report form-input"></td>'+
+      '<td><input type="text" class="item-delivery form-input"></td>'+
+      '<td class="no-print"><button class="btn btn-danger" onclick="this.parentElement.parentElement.remove();renumberDocRows(\''+type+'\');computeDocTotal();">×</button></td>';
+    if(item){
+      const codeSel = tr.querySelector('.item-code');
+      codeSel.value = item.code || '';
+      tr.querySelector('.item-name').value = item.name || '';
+      tr.querySelector('.item-spec').value = item.spec || '';
+      tr.querySelector('.item-unit').value = item.unit || '';
+      tr.querySelector('.item-qty').value = item.qty || '';
+      tr.querySelector('.item-gross').value = item.gross || '';
+      tr.querySelector('.item-net').value = item.net || '';
+      tr.querySelector('.item-car').value = item.car || '';
+      tr.querySelector('.item-sample').value = item.sample || '';
+      tr.querySelector('.item-report').value = item.report || '';
+      tr.querySelector('.item-delivery').value = item.delivery || '';
+    }
+    return tr;
+  }
+  function renumberDocRows(type){
+    const rows = document.querySelectorAll('#'+type+'DocItemsBody tr');
+    rows.forEach((r,i)=>{ r.cells[0].textContent = i+1; });
+  }
+  function addDocItem(type, item){
+    const tbody = document.getElementById(type+'DocItemsBody');
+    const idx = tbody.children.length + 1;
+    const row = createDocItemRow(type, idx, item);
+    tbody.appendChild(row);
+  }
+  /* 计算入库单/出库单明细表末行数量合计 */
+  function computeDocTotal(){
+    ['in','out'].forEach(t => {
+      let total = 0;
+      document.querySelectorAll('#'+t+'DocItemsBody .item-qty').forEach(el => {
+        const v = parseFloat(el.value);
+        if(!isNaN(v)) total += v;
+      });
+      const cell = document.getElementById(t+'DocTotal');
+      if(cell) cell.textContent = total.toFixed(3);
+    });
+  }
+  function readDocItems(type){
+    const rows = document.querySelectorAll('#'+type+'DocItemsBody tr');
+    const items = [];
+    rows.forEach(r => {
+      items.push({
+        code: r.querySelector('.item-code').value,
+        name: r.querySelector('.item-name').value,
+        spec: r.querySelector('.item-spec').value,
+        unit: r.querySelector('.item-unit').value,
+        qty: parseFloat(r.querySelector('.item-qty').value) || 0,
+        gross: parseFloat(r.querySelector('.item-gross').value) || 0,
+        net: parseFloat(r.querySelector('.item-net').value) || 0,
+        car: r.querySelector('.item-car').value,
+        sample: r.querySelector('.item-sample').value,
+        report: r.querySelector('.item-report').value,
+        delivery: r.querySelector('.item-delivery').value
+      });
+    });
+    return items;
+  }
+  function clearDocForm(type){
+    document.getElementById(type+'DocNo').value = '';
+    document.getElementById(type+'DocLocation').value = '基戈马码头项目部';
+    document.getElementById(type+'DocDept').value = '基建工程处';
+    document.getElementById(type+'DocSupplier').value = '';
+    document.getElementById(type+'DocDate').value = today();
+    document.getElementById(type+'DocContract').value = '';
+    document.getElementById(type+'DocOrder').value = '';
+    document.getElementById(type+'DocPlan').value = '';
+    document.getElementById(type+'DocItemsBody').innerHTML = '';
+    if(type==='in'){
+      document.getElementById('inDocInspectors').value = '曹乐乐、杨代齐、张清政';
+      document.getElementById('inDocReceiver').value = '孔繁富';
+      document.getElementById('inDocSignDate').value = today();
+    } else {
+      document.getElementById('outDocInspectors').value = '孔繁富、曹乐乐、杨代齐、张清政';
+      document.getElementById('outDocReceiver').value = '中铁建工集团东非有限公司';
+      document.getElementById('outDocSignDate').value = today();
+    }
+    currentDoc[type] = null;
+    addDocItem(type); /* 默认一行 */
+    computeDocTotal();
+  }
+  function newDocument(type){
+    renderSupplierOptions(type+'DocSupplier');
+    clearDocForm(type);
+    /* 单号 = 前缀 + 入库/出库日期 + 当日最大序号+1 */
+    const d = document.getElementById(type+'DocDate').value || today();
+    document.getElementById(type+'DocNo').value = getNextSerial(type==='in'?'GRN':'GIN', d);
+    renderDocList(type);
+    toast('已生成新'+(type==='in'?'入库':'出库')+'单','info');
+  }
+  /* 修改入库/出库日期时，若为尚未保存的新单，按新日期重新生成单号 */
+  function onDocDateChange(type){
+    if(currentDoc[type]) return;
+    const d = document.getElementById(type+'DocDate').value || today();
+    document.getElementById(type+'DocNo').value = getNextSerial(type==='in'?'GRN':'GIN', d);
+    /* 新单日期变化后单号随之改变，同步刷新列表第一行的当前记录 */
+    renderDocList(type);
+  }
+  function loadDocument(type, docNo){
+    const arr = type==='in' ? db.stockIn : db.stockOut;
+    const docs = arr.filter(r => r.no === docNo);
+    if(docs.length===0) return;
+    const first = docs[0];
+    renderSupplierOptions(type+'DocSupplier', first.supplier);
+    document.getElementById(type+'DocNo').value = first.no;
+    document.getElementById(type+'DocLocation').value = first.location;
+    document.getElementById(type+'DocDept').value = first.department || '基建工程处';
+    document.getElementById(type+'DocDate').value = first.date;
+    document.getElementById(type+'DocContract').value = first.contract || '';
+    document.getElementById(type+'DocOrder').value = first.order || '';
+    document.getElementById(type+'DocPlan').value = first.plan || '';
+    document.getElementById(type+'DocItemsBody').innerHTML = '';
+    docs.forEach(d => addDocItem(type, {
+      code: d.materialNo, name: d.material, spec: d.spec, unit: d.unit, qty: d.qty,
+      gross: d.gross, net: d.net, car: d.carNo, sample: d.sample,
+      report: d.report, delivery: d.deliveryNote
+    }));
+    if(type==='in'){
+      document.getElementById('inDocInspectors').value = first.inspectors || '';
+      document.getElementById('inDocReceiver').value = first.receiver || '';
+      document.getElementById('inDocSignDate').value = signDateToISO(first.signDate, first.date);
+    } else {
+      document.getElementById('outDocInspectors').value = first.inspectors || '';
+      document.getElementById('outDocReceiver').value = first.receiver || '';
+      document.getElementById('outDocSignDate').value = signDateToISO(first.signDate, first.date);
+    }
+    computeDocTotal();
+    currentDoc[type] = first.no;
+    /* 打开单据后刷新列表，使当前单据置顶显示 */
+    renderDocList(type);
+  }
+  function saveDocument(type){
+    const no = document.getElementById(type+'DocNo').value.trim();
+    if(!no){ toast('单号为空','error'); return; }
+    const supplier = document.getElementById(type+'DocSupplier').value;
+    if(!supplier){ toast('请选择供应商','error'); return; }
+    const location = document.getElementById(type+'DocLocation').value || '基戈马码头项目部';
+    const department = document.getElementById(type+'DocDept').value || '基建工程处';
+    const date = document.getElementById(type+'DocDate').value || today();
+    const contract = document.getElementById(type+'DocContract').value;
+    const order = document.getElementById(type+'DocOrder').value;
+    const plan = document.getElementById(type+'DocPlan').value;
+    const inspectors = document.getElementById(type+'DocInspectors').value;
+    const receiver = document.getElementById(type+'DocReceiver').value;
+    const signDate = document.getElementById(type+'DocSignDate').value;
+    const items = readDocItems(type);
+    if(items.length===0){ toast('请至少添加一行物料','error'); return; }
+    const arr = type==='in' ? db.stockIn : db.stockOut;
+    for(let i=arr.length-1;i>=0;i--){
+      if(arr[i].no === no) arr.splice(i,1);
+    }
+    items.forEach((it, idx) => {
+      arr.push({
+        id: uid(), no: no, date: date, location: location, supplier: supplier,
+        department: department, plan: plan, contract: contract, order: order,
+        materialNo: it.code, material: it.name, spec: it.spec, unit: it.unit,
+        qty: it.qty, gross: it.gross, net: it.net, carNo: it.car,
+        sample: it.sample, report: it.report, deliveryNote: it.delivery,
+        inspectors: inspectors, receiver: receiver, signDate: signDate, lineNo: idx+1
+      });
+    });
+    saveDB();
+    currentDoc[type] = no;
+    renderDocList(type);
+    if(type==='in') renderInQuery(); else renderOutQuery();
+    renderStock();
+    toast('保存成功','success');
+  }
+  function deleteCurrentDocument(type){
+    const no = document.getElementById(type+'DocNo').value.trim();
+    if(!no){ toast('当前没有可删除的单据','error'); return; }
+    if(!confirm('确定删除 '+(type==='in'?'入库':'出库')+'单 '+no+'？')) return;
+    const arr = type==='in' ? db.stockIn : db.stockOut;
+    for(let i=arr.length-1;i>=0;i--){
+      if(arr[i].no === no) arr.splice(i,1);
+    }
+    saveDB();
+    newDocument(type);
+    if(type==='in') renderInQuery(); else renderOutQuery();
+    renderStock();
+    toast('删除成功','success');
+  }
+  function renderDocList(type){
+    const arr = type==='in' ? db.stockIn : db.stockOut;
+    const map = new Map();
+    arr.forEach(r => { if(!map.has(r.no)) map.set(r.no, r); });
+    const tbody = document.getElementById(type+'DocListBody');
+    tbody.innerHTML = '';
+    const total = map.size;
+    /* 列表查询：关键字实时过滤，匹配单号/日期/供应商/存储位置（不区分大小写） */
+    const searchEl = document.getElementById(type+'DocSearch');
+    const kw = (searchEl ? searchEl.value : '').trim().toLowerCase();
+    const match = r => !kw || [r.no, r.date, r.supplier, r.location].some(v => String(v||'').toLowerCase().includes(kw));
+    /* 当前记录：正在表单中编辑的单据（已保存的当前单 或 尚未保存的新单）固定显示在第一行 */
+    const currentNo = (currentDoc[type] || document.getElementById(type+'DocNo').value || '').trim();
+    let docs = Array.from(map.values()).filter(match).sort(cmpDocDesc);
+    if(currentNo){
+      if(map.has(currentNo)){
+        /* 已保存的当前单：从原位置移到第一行 */
+        const idx = docs.findIndex(d => d.no === currentNo);
+        if(idx > 0){ const cur = docs.splice(idx,1)[0]; docs.unshift(cur); }
+      } else {
+        /* 尚未保存的新单：以表单当前内容构造临时记录，匹配搜索条件时插入第一行 */
+        const tmp = {
+          no: currentNo,
+          date: document.getElementById(type+'DocDate').value,
+          supplier: document.getElementById(type+'DocSupplier').value,
+          location: document.getElementById(type+'DocLocation').value,
+          __unsaved: true
+        };
+        if(match(tmp)) docs.unshift(tmp);
+      }
+    }
+    /* 标题计数：无搜索时显示总数，搜索时显示 匹配数/总数 */
+    const countEl = document.getElementById(type+'DocCount');
+    if(countEl){
+      const savedShown = docs.filter(d => !d.__unsaved).length;
+      countEl.textContent = kw ? ('匹配 '+savedShown+' / '+total+' 张') : ('共 '+total+' 张');
+    }
+    /* 空状态：无任何单据 或 搜索无匹配 */
+    if(docs.length === 0){
+      const tr = document.createElement('tr');
+      tr.className = 'doc-empty-row';
+      const msg = total === 0
+        ? '暂无单据，点击上方「🆕 新增」创建'
+        : '未找到匹配「'+esc((searchEl?searchEl.value:'').trim())+'」的单据';
+      tr.innerHTML = '<td colspan="5">'+msg+'</td>';
+      tbody.appendChild(tr);
+      return;
+    }
+    docs.forEach(r => {
+      const tr = document.createElement('tr');
+      const isCur = r.no === currentNo;
+      if(isCur) tr.className = 'current-doc-row';
+      /* 第一行当前记录加徽标：未保存的新单显示「新单」，已保存的当前单显示「当前」 */
+      const badge = isCur ? ' <span class="'+(r.__unsaved?'doc-new-badge':'doc-cur-badge')+'">'+(r.__unsaved?'新单':'当前')+'</span>' : '';
+      /* 操作列：「打开」查看/编辑 +「删除」直接删除该单（未保存的新单已在表单中，显示状态文字） */
+      const action = (isCur && r.__unsaved)
+        ? '<span class="text-slate-500" style="font-size:12px;">编辑中</span>'
+        : '<button class="btn btn-primary btn-sm" onclick="loadDocument(\''+type+'\',\''+esc(r.no)+'\')">打开</button>'
+        + '<button class="btn btn-danger btn-sm" style="margin-left:4px;" onclick="deleteDocFromList(\''+type+'\',\''+esc(r.no)+'\')">删除</button>';
+      tr.innerHTML = '<td>'+esc(r.no)+badge+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.supplier)+'</td><td>'+esc(r.location)+'</td>'+
+        '<td>'+action+'</td>';
+      tbody.appendChild(tr);
+    });
+  }
+  /* 清空单据列表搜索框并恢复完整列表 */
+  function resetDocSearch(type){
+    const el = document.getElementById(type+'DocSearch');
+    if(el) el.value = '';
+    renderDocList(type);
+  }
+  /* 单据列表行内删除：删除指定单号的全部明细行；若删除的是当前打开的单据则重置为新单 */
+  function deleteDocFromList(type, no){
+    const arr = type==='in' ? db.stockIn : db.stockOut;
+    const rows = arr.filter(r => r.no === no);
+    if(rows.length === 0){ toast('未找到该单据','error'); return; }
+    const r = rows[0];
+    const msg = '确定删除'+(type==='in'?'入库':'出库')+'单 '+no+' ？\n\n'
+      + '日期：'+(r.date||'-')+'\n'
+      + '供应商：'+(r.supplier||'-')+'\n'
+      + '存储位置：'+(r.location||'-')+'\n'
+      + '物料行数：'+rows.length+' 行\n\n'
+      + '删除后不可恢复（如需保留请先导出 JSON 备份）';
+    if(!confirm(msg)) return;
+    for(let i=arr.length-1;i>=0;i--){
+      if(arr[i].no === no) arr.splice(i,1);
+    }
+    saveDB();
+    if(currentDoc[type] === no || document.getElementById(type+'DocNo').value.trim() === no){
+      /* 删除的是当前编辑中的单据：重置表单并生成新单 */
+      newDocument(type);
+    } else {
+      renderDocList(type);
+    }
+    if(type==='in') renderInQuery(); else renderOutQuery();
+    renderStock();
+    toast('已删除 '+no,'success');
+  }
+
+  /* ============ 打印与导出 ============ */
+  /* 打印：克隆单据 → 同步所有输入框/下拉框/文本域的当前值 → 移除操作列等不打印元素 → 打印窗口
+     （innerHTML 不会带上用户输入的 value，必须逐个同步，否则打印出来是空白表单） */
+  /* 从主样式表提取 @media print 块内的规则（花括号配对扫描）。
+     这些规则在打印窗口的屏幕渲染中也强制生效，使分页脚本测量的高度
+     与实际打印高度一致，从而准确分页 */
+  function extractPrintCSS(css){
+    let out = '', re = /@media\s+print\s*\{/g, m;
+    while((m = re.exec(css))){
+      let depth = 1, i = m.index + m[0].length;
+      while(i < css.length && depth > 0){
+        const ch = css.charAt(i);
+        if(ch === '{') depth++;
+        else if(ch === '}') depth--;
+        i++;
+      }
+      out += css.slice(m.index + m[0].length, i - 1) + '\n';
+      re.lastIndex = i;
+    }
+    return out;
+  }
+  function printDoc(wrapperId){
+    const wrapper = document.getElementById(wrapperId);
+    if(!wrapper){ toast('未找到打印内容','error'); return; }
+    const clone = wrapper.cloneNode(true);
+    /* 移除不需要打印的元素（按钮、操作列等） */
+    clone.querySelectorAll('.no-print').forEach(el => el.remove());
+    /* 同步表单当前值到克隆节点，并把输入框/下拉框/文本域转换为纯文本
+       （input 内容超宽时会被截断，转成 span 才能保证打印完整显示） */
+    const liveEls = wrapper.querySelectorAll('input, select, textarea');
+    const cloneEls = clone.querySelectorAll('input, select, textarea');
+    liveEls.forEach((el, i) => {
+      const c = cloneEls[i];
+      if(!c) return;
+      let val = el.value || '';
+      if(el.tagName === 'SELECT'){
+        const opt = Array.from(el.options).find(o => o.value === el.value);
+        val = opt ? opt.textContent : val;
+      }
+      if(el.type === 'date' && val){
+        const m = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if(m) val = m[1] + '-' + m[2] + '-' + m[3];
+      }
+      const span = document.createElement('span');
+      span.className = 'print-val';
+      span.textContent = val;
+      if(el.classList && el.classList.contains('sign-input')){
+        span.style.borderBottom = '1px solid #94a3b8';
+        span.style.display = 'inline-block';
+        span.style.minWidth = '100px';
+        span.style.padding = '0 4px';
+      }
+      if(el.tagName === 'TEXTAREA') span.style.whiteSpace = 'pre-wrap';
+      c.replaceWith(span);
+    });
+    /* 打印页脚合计值同步（td 文本，非 input） */
+    ['in','out'].forEach(t => {
+      const liveTotal = document.getElementById(t+'DocTotal');
+      const target = clone.querySelector('[id="'+t+'DocTotal"]');
+      if(liveTotal && target) target.textContent = liveTotal.textContent;
+    });
+    const styleEl = document.querySelector('style');
+    const pagStyleEl = document.getElementById('paginate-print-style');
+    const pagScriptEl = document.getElementById('paginate-print-script');
+    /* 打印窗口附加样式：分页页码样式 + 强制生效的打印规则
+       （打印规则常驻生效，让分页脚本在屏幕上测得的高度与打印高度一致） */
+    const extraCSS = (pagStyleEl ? pagStyleEl.textContent : '') + '\n' + extractPrintCSS(styleEl.textContent);
+    const printWindow = window.open('', '_blank', 'width=1100,height=800');
+    if(!printWindow){ toast('打印窗口被浏览器拦截，请允许弹出窗口后重试','error'); return; }
+    printWindow.document.open();
+    printWindow.document.write('<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>打印</title>'+
+      '<script src="assets/tailwind.js"><\/script>'+
+      '<script>if(typeof tailwind===\'undefined\'){document.write(\'<script src="https://cdn.tailwindcss.com"><\\/script>\');}<\/script>'+styleEl.outerHTML+
+      '<style>'+extraCSS+'<\/style></head><body class="print-win" style="background:#fff;">'+
+      clone.outerHTML+
+      '<script>window.__PRINT_WINDOW__=true;'+(pagScriptEl ? pagScriptEl.textContent : '')+'<\/script></body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    let printed = false;
+    const doPrint = () => {
+      if(printed || printWindow.__docPrinted__) return;
+      printed = true;
+      printWindow.__docPrinted__ = true;
+      try{ printWindow.focus(); printWindow.print(); printWindow.close(); }catch(e){}
+    };
+    printWindow.onload = () => setTimeout(doPrint, 300);
+    setTimeout(doPrint, 3500);
+  }
+  function exportDocExcel(type){
+    const no = document.getElementById(type+'DocNo').value;
+    if(!no){ toast('没有可导出的单据','error'); return; }
+    const items = readDocItems(type);
+    if(items.length===0){ toast('没有可导出的数据','error'); return; }
+    const headerInfo = [
+      [(type==='in'?'Goods Receipt Note 入库单':'Goods Issue Note 出库单')],
+      [(type==='in'?'GRN Number':'GIN Number'), no, 'Storage Location', document.getElementById(type+'DocLocation').value, 'Supplier', document.getElementById(type+'DocSupplier').value, (type==='in'?'GRN Date':'GIN Date'), document.getElementById(type+'DocDate').value],
+      ['Demand Department', document.getElementById(type+'DocDept').value, 'Demand Plan Sheet No.', document.getElementById(type+'DocPlan').value, 'Contract No.', document.getElementById(type+'DocContract').value, 'Purchase Order', document.getElementById(type+'DocOrder').value]
+    ];
+    const headers = ['No.', 'Material No.', 'Material Name', 'Specification', 'Unit', 'Quantity', 'Gross Weight', 'Net Weight', 'License Plate NO.', 'sample submission', 'Submission of Inspection and Testing Report', 'Delivery Note'];
+    const rows = items.map((it,i)=>[i+1, it.code, it.name, it.spec, it.unit, it.qty, it.gross, it.net, it.car, it.sample, it.report, it.delivery]);
+    const footer = [
+      ['Joint Inspector:', document.getElementById(type+'DocInspectors').value, 'Receiver:', document.getElementById(type+'DocReceiver').value, 'Date:', document.getElementById(type+'DocSignDate').value]
+    ];
+    const totalCell = document.getElementById(type+'DocTotal');
+    const totalVal = totalCell ? totalCell.textContent : '';
+    footer.push(['Total:', totalVal]);
+    const ws_data = headerInfo.concat([headers], rows, footer);
+    const ws = XLSX.utils.aoa_to_sheet(ws_data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, no);
+    XLSX.writeFile(wb, no+'.xlsx');
+  }
+  function exportTable(key, filename){
+    let headers, rows;
+    if(key==='material'){
+      headers = ['物料编号Material No.', '名称MaterialName', '规格型号Specification', '单位Unit', '备注'];
+      rows = db.materials.map(m => [m.no, m.name, m.spec, m.unit, m.remark]);
+    } else if(key==='supplier'){
+      headers = ['名称', '地址', 'VRN增值税号', 'TIN税号', '联系人', 'E-mail', '备注', '合同号Contract No.', '采购单号PurchaseOrder', '计划需求单号'];
+      rows = db.suppliers.map(s => [s.name, s.address, s.vrn, s.tin, s.contact, s.email, s.remark, s.contract, s.order, s.plan]);
+    } else if(key==='stockIn'){
+      headers = ['入库单号GRN Number', '入库日期GRN Date', '存储位置Storage Location', '供应商Supplier', '需求部门Demand Department', '需求计划单号', '合同号Contract No.', '采购单号PurchaseOrder', '名称MaterialName', '规格型号Specification', '单位Unit', '数量Quantity', '毛重GrossWeight', '净重NetWeight', '车号License Plate NO.', '送样sample submission', '送检检测报告Submissionof Inspectionand TestingReport', '送货单号Delivery Note', '联合验收人', '签收人', '签收日期'];
+      rows = db.stockIn.map(r => [r.no, r.date, r.location, r.supplier, r.department, r.plan, r.contract, r.order, r.material, r.spec, r.unit, r.qty, r.gross, r.net, r.carNo, r.sample, r.report, r.deliveryNote, r.inspectors, r.receiver, r.signDate]);
+    } else if(key==='stockOut'){
+      headers = ['出库单号GIN Number', '出库日期GIN Date', '存储位置Storage Location', '供应商Supplier', '需求部门Demand Department', '需求计划单号', '合同号Contract No.', '采购单号PurchaseOrder', '名称MaterialName', '规格型号Specification', '单位Unit', '数量Quantity', '毛重GrossWeight', '净重NetWeight', '车号License Plate NO.', '送样sample submission', '送检检测报告Submissionof Inspectionand TestingReport', '送货单号Delivery Note', '联合验收人', '签收人', '签收日期'];
+      rows = db.stockOut.map(r => [r.no, r.date, r.location, r.supplier, r.department, r.plan, r.contract, r.order, r.material, r.spec, r.unit, r.qty, r.gross, r.net, r.carNo, r.sample, r.report, r.deliveryNote, r.inspectors, r.receiver, r.signDate]);
+    }
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, filename);
+    XLSX.writeFile(wb, filename+'.xlsx');
+  }
+  function downloadTemplate(key){
+    let headers;
+    if(key==='material') headers = ['物料编号Material No.', '名称MaterialName', '规格型号Specification', '单位Unit', '备注'];
+    else if(key==='supplier') headers = ['名称', '地址', 'VRN增值税号', 'TIN税号', '联系人', 'E-mail', '备注', '合同号Contract No.', '采购单号PurchaseOrder', '计划需求单号'];
+    else if(key==='stockIn') headers = ['入库单号GRN Number', '入库日期GRN Date', '存储位置Storage Location', '供应商Supplier', '需求部门Demand Department', '需求计划单号', '合同号Contract No.', '采购单号PurchaseOrder', '名称MaterialName', '规格型号Specification', '单位Unit', '数量Quantity', '毛重GrossWeight', '净重NetWeight', '车号License Plate NO.', '送样sample submission', '送检检测报告Submissionof Inspectionand TestingReport', '送货单号Delivery Note', '联合验收人', '签收人', '签收日期'];
+    else if(key==='stockOut') headers = ['出库单号GIN Number', '出库日期GIN Date', '存储位置Storage Location', '供应商Supplier', '需求部门Demand Department', '需求计划单号', '合同号Contract No.', '采购单号PurchaseOrder', '名称MaterialName', '规格型号Specification', '单位Unit', '数量Quantity', '毛重GrossWeight', '净重NetWeight', '车号License Plate NO.', '送样sample submission', '送检检测报告Submissionof Inspectionand TestingReport', '送货单号Delivery Note', '联合验收人', '签收人', '签收日期'];
+    const ws = XLSX.utils.aoa_to_sheet([headers]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'template');
+    XLSX.writeFile(wb, key+'_template.xlsx');
+  }
+  function importExcel(e, key){
+    const file = e.target.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      const data = new Uint8Array(ev.target.result);
+      const workbook = XLSX.read(data, {type:'array'});
+      const first = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(first, {header:1, defval:''});
+      rows.shift();
+      if(key==='material'){
+        rows.forEach(r => { if(r[0] && r[1]) db.materials.push({no:r[0], name:r[1], spec:r[2]||'', unit:r[3]||'', remark:r[4]||''}); });
+      } else if(key==='supplier'){
+        rows.forEach(r => { if(r[0]) db.suppliers.push({name:r[0], address:r[1]||'', vrn:r[2]||'', tin:r[3]||'', contact:r[4]||'', email:r[5]||'', remark:r[6]||'', contract:r[7]||'', order:r[8]||'', plan:r[9]||''}); });
+      } else if(key==='stockIn'){
+        rows.forEach(r => { if(r[0] && r[8]) db.stockIn.push({id:uid(), no:r[0], date:excelDate(r[1])||today(), location:r[2]||'', supplier:r[3]||'', department:r[4]||'', plan:r[5]||'', contract:r[6]||'', order:r[7]||'', materialNo:matchMaterialNo(r[8], r[9]||''), material:r[8], spec:r[9]||'', unit:r[10]||'', qty:parseFloat(r[11])||0, gross:parseFloat(r[12])||0, net:parseFloat(r[13])||0, carNo:r[14]||'', sample:r[15]||'', report:r[16]||'', deliveryNote:r[17]||'', inspectors:r[18]||'', receiver:r[19]||'', signDate:signDateToISO(r[20], excelDate(r[1]))}); });
+      } else if(key==='stockOut'){
+        rows.forEach(r => { if(r[0] && r[8]) db.stockOut.push({id:uid(), no:r[0], date:excelDate(r[1])||today(), location:r[2]||'', supplier:r[3]||'', department:r[4]||'', plan:r[5]||'', contract:r[6]||'', order:r[7]||'', materialNo:matchMaterialNo(r[8], r[9]||''), material:r[8], spec:r[9]||'', unit:r[10]||'', qty:parseFloat(r[11])||0, gross:parseFloat(r[12])||0, net:parseFloat(r[13])||0, carNo:r[14]||'', sample:r[15]||'', report:r[16]||'', deliveryNote:r[17]||'', inspectors:r[18]||'', receiver:r[19]||'', signDate:signDateToISO(r[20], excelDate(r[1]))}); });
+      }
+      saveDB();
+      refreshAll();
+      toast('导入成功','success');
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  function clearData(key){
+    if(!confirm('确定清空 '+key+' 数据？')) return;
+    if(key==='material') db.materials = [];
+    if(key==='supplier') db.suppliers = [];
+    if(key==='stockIn') db.stockIn = [];
+    if(key==='stockOut') db.stockOut = [];
+    saveDB(); refreshAll(); toast('已清空','info');
+  }
+
+  /* ============ JSON 整库备份与恢复 ============ */
+  /* 统计当前各表数据量，显示在 JSON 备份卡片的数字框中 */
+  function renderJsonStats(){
+    const m = document.getElementById('jsonStatMaterial');
+    if(!m) return;
+    m.textContent = db.materials.length;
+    document.getElementById('jsonStatSupplier').textContent = db.suppliers.length;
+    document.getElementById('jsonStatIn').textContent = db.stockIn.length;
+    document.getElementById('jsonStatOut').textContent = db.stockOut.length;
+    const lb = document.getElementById('jsonLastBackup');
+    if(lb){
+      const last = lsGet('jinhai_wms_lastBackup');
+      lb.textContent = last ? '上次备份：'+last : '尚未导出备份';
+    }
+    renderFileSyncStatus();
+  }
+  /* 导出 JSON 完整备份文件 */
+  function exportJSONBackup(){
+    const d = new Date();
+    const backup = {
+      _meta: {
+        app: '金海坦桑尼亚有限公司 - 基戈马工程材料仓库管理系统',
+        storeKey: STORE_KEY,
+        version: '2.0',
+        exportTime: d.toISOString(),
+        counts: {
+          materials: db.materials.length,
+          suppliers: db.suppliers.length,
+          stockIn: db.stockIn.length,
+          stockOut: db.stockOut.length
+        }
+      },
+      materials: db.materials,
+      suppliers: db.suppliers,
+      stockIn: db.stockIn,
+      stockOut: db.stockOut
+    };
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob(['\ufeff'+json], {type:'application/json;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const stamp = d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'_'+String(d.getHours()).padStart(2,'0')+String(d.getMinutes()).padStart(2,'0');
+    a.download = '金海仓库数据备份_'+stamp+'.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    /* 记录备份时间 */
+    const now = fmtDate(d)+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    lsSet('jinhai_wms_lastBackup', now);
+    const lb = document.getElementById('jsonLastBackup');
+    if(lb) lb.textContent = '上次备份：'+now;
+    const total = backup._meta.counts.materials+backup._meta.counts.suppliers+backup._meta.counts.stockIn+backup._meta.counts.stockOut;
+    toast('JSON 备份已导出，共 '+total+' 条记录','success');
+  }
+
+  /* 暂存待导入的 JSON 数据，供弹窗确认使用 */
+  let pendingJSONData = null;
+  /* 从 JSON 文件读取并弹出恢复确认弹窗 */
+  function importJSONBackup(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    e.target.value = '';
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      try {
+        const data = JSON.parse(ev.target.result);
+        const hasData = data && (Array.isArray(data.materials) || Array.isArray(data.suppliers) || Array.isArray(data.stockIn) || Array.isArray(data.stockOut));
+        if(!hasData){
+          toast('文件格式不正确：未找到有效数据','error');
+          return;
+        }
+        const normalized = {
+          materials: Array.isArray(data.materials) ? data.materials : [],
+          suppliers: Array.isArray(data.suppliers) ? data.suppliers : [],
+          stockIn: Array.isArray(data.stockIn) ? data.stockIn : [],
+          stockOut: Array.isArray(data.stockOut) ? data.stockOut : []
+        };
+        const total = normalized.materials.length + normalized.suppliers.length + normalized.stockIn.length + normalized.stockOut.length;
+        if(total === 0){
+          toast('备份文件中没有数据','error');
+          return;
+        }
+        pendingJSONData = normalized;
+        const meta = data._meta || {};
+        let exportTime = '未知';
+        if(meta.exportTime){
+          const dt = new Date(meta.exportTime);
+          if(!isNaN(dt)) exportTime = fmtDate(dt)+' '+String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+        }
+        const html = '<div class="space-y-4">'
+          + '<div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">'
+          +   '<div class="font-bold text-indigo-800 mb-3">📦 备份文件信息</div>'
+          +   '<div class="grid grid-cols-2 gap-2 text-sm">'
+          +     '<div><span class="text-slate-500">应用：</span>'+esc(meta.app||'未知')+'</div>'
+          +     '<div><span class="text-slate-500">版本：</span>'+esc(meta.version||'未知')+'</div>'
+          +     '<div><span class="text-slate-500">导出时间：</span>'+exportTime+'</div>'
+          +     '<div><span class="text-slate-500">总记录数：</span><span class="font-bold text-indigo-700">'+total+'</span></div>'
+          +   '</div>'
+          +   '<div class="grid grid-cols-4 gap-2 mt-3 text-center">'
+          +     '<div class="bg-white rounded p-2 border border-indigo-100"><div class="text-lg font-bold text-indigo-700">'+normalized.materials.length+'</div><div class="text-xs text-slate-500">物料</div></div>'
+          +     '<div class="bg-white rounded p-2 border border-indigo-100"><div class="text-lg font-bold text-indigo-700">'+normalized.suppliers.length+'</div><div class="text-xs text-slate-500">供应商</div></div>'
+          +     '<div class="bg-white rounded p-2 border border-indigo-100"><div class="text-lg font-bold text-indigo-700">'+normalized.stockIn.length+'</div><div class="text-xs text-slate-500">入库</div></div>'
+          +     '<div class="bg-white rounded p-2 border border-indigo-100"><div class="text-lg font-bold text-indigo-700">'+normalized.stockOut.length+'</div><div class="text-xs text-slate-500">出库</div></div>'
+          +   '</div>'
+          + '</div>'
+          + '<div class="bg-slate-50 border border-slate-200 rounded-lg p-4">'
+          +   '<div class="font-bold text-slate-700 mb-2">📊 当前系统数据</div>'
+          +   '<div class="grid grid-cols-4 gap-2 text-center">'
+          +     '<div class="bg-white rounded p-2 border border-slate-200"><div class="text-lg font-bold text-slate-700">'+db.materials.length+'</div><div class="text-xs text-slate-500">物料</div></div>'
+          +     '<div class="bg-white rounded p-2 border border-slate-200"><div class="text-lg font-bold text-slate-700">'+db.suppliers.length+'</div><div class="text-xs text-slate-500">供应商</div></div>'
+          +     '<div class="bg-white rounded p-2 border border-slate-200"><div class="text-lg font-bold text-slate-700">'+db.stockIn.length+'</div><div class="text-xs text-slate-500">入库</div></div>'
+          +     '<div class="bg-white rounded p-2 border border-slate-200"><div class="text-lg font-bold text-slate-700">'+db.stockOut.length+'</div><div class="text-xs text-slate-500">出库</div></div>'
+          +   '</div>'
+          + '</div>'
+          + '<div class="bg-amber-50 border border-amber-300 rounded-lg p-4">'
+          +   '<div class="font-bold text-amber-800 mb-3">⚠️ 请选择恢复模式</div>'
+          +   '<div class="space-y-3">'
+          +     '<div class="flex items-start gap-3">'
+          +       '<input type="radio" name="jsonImportMode" value="merge" id="modeMerge" checked class="mt-1">'
+          +       '<label for="modeMerge" class="cursor-pointer">'
+          +         '<span class="font-semibold text-slate-700">合并追加</span>'
+          +         '<span class="block text-xs text-slate-500 mt-1">将备份数据合并到当前数据：编号相同的物料、名称相同的供应商、单号相同的单据用备份版本替换，其余全部追加。同一张单据的全部明细行作为整体处理，不会丢失明细。适合跨设备同步数据。</span>'
+          +       '</label>'
+          +     '</div>'
+          +     '<div class="flex items-start gap-3">'
+          +       '<input type="radio" name="jsonImportMode" value="overwrite" id="modeOverwrite" class="mt-1">'
+          +       '<label for="modeOverwrite" class="cursor-pointer">'
+          +         '<span class="font-semibold text-slate-700">覆盖替换</span>'
+          +         '<span class="block text-xs text-slate-500 mt-1">清空当前全部数据，用备份数据完全替换。<span class="text-red-600 font-semibold">此操作不可撤销！</span></span>'
+          +       '</label>'
+          +     '</div>'
+          +   '</div>'
+          + '</div>'
+          + '<div class="flex justify-end gap-2 pt-2">'
+          +   '<button class="btn btn-gray" onclick="closeModal()">取消</button>'
+          +   '<button class="btn btn-primary" onclick="confirmImportJSON()">确认恢复</button>'
+          + '</div>'
+          + '</div>';
+        openModal('JSON 数据恢复', html);
+      } catch(err){
+        toast('JSON 解析失败：'+err.message,'error');
+      }
+    };
+    reader.readAsText(file);
+  }
+  /* 确认执行 JSON 恢复（合并或覆盖） */
+  function confirmImportJSON(){
+    if(!pendingJSONData){ toast('没有待导入的数据','error'); return; }
+    const mode = document.querySelector('input[name="jsonImportMode"]:checked').value;
+    const data = pendingJSONData;
+    let added = 0, replaced = 0;
+    if(mode === 'overwrite'){
+      if(!confirm('确认覆盖替换？当前所有数据将被删除并替换为备份数据，此操作不可撤销！')) return;
+      db.materials = data.materials;
+      db.suppliers = data.suppliers;
+      db.stockIn = data.stockIn;
+      db.stockOut = data.stockOut;
+      added = data.materials.length + data.suppliers.length + data.stockIn.length + data.stockOut.length;
+    } else {
+      /* 合并模式：相同标识的记录用备份版本替换、其余追加；单据按整单处理，保留全部明细行 */
+      data.materials.forEach(m => {
+        if(!m.no){ db.materials.push(m); added++; return; }
+        const i = db.materials.findIndex(x => x.no === m.no);
+        if(i >= 0){ db.materials[i] = m; replaced++; } else { db.materials.push(m); added++; }
+      });
+      data.suppliers.forEach(s => {
+        if(!s.name){ db.suppliers.push(s); added++; return; }
+        const i = db.suppliers.findIndex(x => x.name === s.name);
+        if(i >= 0){ db.suppliers[i] = s; replaced++; } else { db.suppliers.push(s); added++; }
+      });
+      /* 入库/出库按单号整单合并：同一单号的多行明细作为整体替换或追加，不再只保留第一行 */
+      ['stockIn','stockOut'].forEach(key => {
+        const groups = new Map();
+        const noNoRows = [];
+        data[key].forEach(r => {
+          if(!r.no){ noNoRows.push(r); return; }
+          if(!groups.has(r.no)) groups.set(r.no, []);
+          groups.get(r.no).push(r);
+        });
+        groups.forEach((rows, no) => {
+          const rest = db[key].filter(x => x.no !== no);
+          if(rest.length !== db[key].length) replaced += rows.length;
+          else added += rows.length;
+          db[key] = rest.concat(rows);
+        });
+        if(noNoRows.length){ db[key] = db[key].concat(noNoRows); added += noNoRows.length; }
+      });
+    }
+    saveDB();
+    refreshAll();
+    closeModal();
+    pendingJSONData = null;
+    toast(mode==='overwrite' ? '数据已覆盖恢复，共 '+added+' 条记录' : '数据已合并导入：新增 '+added+' 条、替换 '+replaced+' 条记录', 'success');
+  }
+  /* 以弹窗预览当前数据的 JSON 格式 */
+  function viewJSONData(){
+    const backup = {
+      _meta: { app:'金海坦桑尼亚有限公司 - 基戈马工程材料仓库管理系统', exportTime:new Date().toISOString() },
+      materials: db.materials,
+      suppliers: db.suppliers,
+      stockIn: db.stockIn,
+      stockOut: db.stockOut
+    };
+    const json = JSON.stringify(backup, null, 2);
+    const html = '<pre class="bg-slate-800 text-green-400 p-4 rounded-lg text-xs overflow-auto max-h-[60vh] whitespace-pre-wrap">'+esc(json)+'</pre>';
+    openModal('当前数据 JSON 预览', html);
+  }
+
+  /* ============ 渲染函数 ============ */
+  function esc(str){ return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function money(n){ return Number(n || 0).toLocaleString('zh-CN', {minimumFractionDigits:3, maximumFractionDigits:3}); }
+  /* 自然排序比较器：把字符串切成「非数字段 / 数字段」，数字段按数值比较。
+     单号形如 GIN2026080110，纯字符串比较会把 ...9 排在 ...10 之后，自然排序可避免该错位 */
+  function natCmp(a, b){
+    const ta = String(a == null ? '' : a).split(/(\d+)/);
+    const tb = String(b == null ? '' : b).split(/(\d+)/);
+    const len = Math.max(ta.length, tb.length);
+    for(let i = 0; i < len; i++){
+      const x = ta[i], y = tb[i];
+      if(x === undefined) return -1;
+      if(y === undefined) return 1;
+      const c = (/^\d+$/.test(x) && /^\d+$/.test(y))
+        ? (parseInt(x, 10) - parseInt(y, 10))
+        : String(x).localeCompare(String(y), 'zh');
+      if(c !== 0) return c;
+    }
+    return 0;
+  }
+  /* 单据倒序：优先按日期倒序（最新的排最前），同日再按单号倒序。
+     不直接按单号字符串倒序，是因为历史数据单号格式可能不统一，按日期排序才能真正保证「最新在最前」 */
+  function cmpDocDesc(a, b){
+    return String(b.date || '').localeCompare(String(a.date || '')) || natCmp(b.no, a.no);
+  }
+  /* 按单号顺序（升序）返回新数组，不改动原数组 */
+  function sortRowsByNo(rows){ return rows.slice().sort((a, b) => natCmp(a.no, b.no)); }
+
+  /* 按筛选条件过滤出入库明细（渲染与导出共用，保证导出的就是当前查询结果） */
+  function filterQueryRows(type){
+    const p = type === 'in' ? 'in' : 'out';
+    const sd = document.getElementById(p+'StartDate').value;
+    const ed = document.getElementById(p+'EndDate').value;
+    const kw = (document.getElementById(p+'Keyword').value || '').toLowerCase();
+    return (type === 'in' ? db.stockIn : db.stockOut).filter(r => {
+      if(sd && r.date < sd) return false;
+      if(ed && r.date > ed) return false;
+      if(kw){
+        const t = (r.no+' '+r.supplier+' '+r.material+' '+r.spec+' '+r.contract+' '+r.order+' '+r.carNo).toLowerCase();
+        if(!t.includes(kw)) return false;
+      }
+      return true;
+    });
+  }
+  /* 累加浮点误差修正：保留 3 位小数，避免导出到 Excel 出现 7.299999999999999 */
+  function round3(n){ return Math.round((parseFloat(n) || 0) * 1000) / 1000; }
+  /* 数量/毛重/净重合计（不同单位仍按数值累加，与页面显示口径一致） */
+  function sumQueryRows(rows){
+    const a = rows.reduce((acc, r) => {
+      acc.qty += parseFloat(r.qty) || 0;
+      acc.gross += parseFloat(r.gross) || 0;
+      acc.net += parseFloat(r.net) || 0;
+      return acc;
+    }, {qty:0, gross:0, net:0});
+    a.qty = round3(a.qty); a.gross = round3(a.gross); a.net = round3(a.net);
+    return a;
+  }
+  /* 刷新汇总条与表尾合计行 */
+  function renderQuerySummary(type, rows){
+    const p = type === 'in' ? 'in' : 'out';
+    const s = sumQueryRows(rows);
+    const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+    set(p+'QueryCount', rows.length);
+    set(p+'QueryQtySum', money(s.qty));
+    set(p+'QueryGrossSum', money(s.gross));
+    set(p+'QueryNetSum', money(s.net));
+    set(p+'QueryQtyTotal', money(s.qty));
+    set(p+'QueryGrossTotal', money(s.gross));
+    set(p+'QueryNetTotal', money(s.net));
+    return s;
+  }
+  function renderDetailRows(type, rows){
+    const tbody = document.getElementById((type==='in'?'in':'out')+'QueryTableBody');
+    tbody.innerHTML = '';
+    let idx = 1;
+    rows.forEach(r => {
+      tbody.innerHTML += '<tr><td>'+(idx++)+'</td><td>'+esc(r.no)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.location)+'</td><td>'+esc(r.supplier)+'</td><td>'+esc(r.department)+'</td><td>'+esc(r.plan)+'</td><td>'+esc(r.contract)+'</td><td>'+esc(r.order)+'</td><td>'+esc(r.material)+'</td><td class="spec-cell">'+esc(r.spec)+'</td><td>'+esc(r.unit)+'</td><td>'+money(r.qty)+'</td><td>'+money(r.gross)+'</td><td>'+money(r.net)+'</td><td>'+esc(r.carNo)+'</td><td>'+esc(r.sample)+'</td><td>'+esc(r.report)+'</td><td>'+esc(r.deliveryNote)+'</td><td>'+esc(r.inspectors)+'</td><td>'+esc(r.receiver)+'</td><td>'+esc(r.signDate)+'</td></tr>';
+    });
+    renderQuerySummary(type, rows);
+  }
+  /* 明细表同样按单号顺序展示，使屏幕顺序与导出顺序一致（所见即所导）；
+     序号列也随之按单号重排。若需要「最新在前」，把 natCmp(a.no,b.no) 换成 cmpDocDesc 即可 */
+  function renderInQuery(){ renderDetailRows('in', sortRowsByNo(filterQueryRows('in'))); }
+  function renderOutQuery(){ renderDetailRows('out', sortRowsByNo(filterQueryRows('out'))); }
+  /* 导出当前查询结果（含筛选条件说明与合计行） */
+  function exportQueryExcel(type){
+    const rows = sortRowsByNo(filterQueryRows(type));   /* 按单号顺序导出 */
+    if(rows.length === 0){ toast('当前查询无数据，无可导出内容','error'); return; }
+    const p = type === 'in' ? 'in' : 'out';
+    const sd = document.getElementById(p+'StartDate').value;
+    const ed = document.getElementById(p+'EndDate').value;
+    const kw = document.getElementById(p+'Keyword').value || '';
+    const name = type === 'in' ? '入库明细' : '出库明细';
+    const cond = [[name + '查询结果'], ['查询条件', '开始日期：'+(sd||'不限'), '结束日期：'+(ed||'不限'), '关键字：'+(kw||'无')]];
+    const headers = type === 'in'
+      ? ['序号','入库单号GRN Number', '入库日期GRN Date', '存储位置Storage Location', '供应商Supplier', '需求部门Demand Department', '需求计划单号', '合同号Contract No.', '采购单号PurchaseOrder', '名称MaterialName', '规格型号Specification', '单位Unit', '数量Quantity', '毛重GrossWeight', '净重NetWeight', '车号License Plate NO.', '送样sample submission', '送检检测报告Submissionof Inspectionand TestingReport', '送货单号Delivery Note', '联合验收人', '签收人', '签收日期']
+      : ['序号','出库单号GIN Number', '出库日期GIN Date', '存储位置Storage Location', '供应商Supplier', '需求部门Demand Department', '需求计划单号', '合同号Contract No.', '采购单号PurchaseOrder', '名称MaterialName', '规格型号Specification', '单位Unit', '数量Quantity', '毛重GrossWeight', '净重NetWeight', '车号License Plate NO.', '送样sample submission', '送检检测报告Submissionof Inspectionand TestingReport', '送货单号Delivery Note', '联合验收人', '签收人', '签收日期'];
+    const data = rows.map((r, i) => [i+1, r.no, r.date, r.location, r.supplier, r.department, r.plan, r.contract, r.order, r.material, r.spec, r.unit, r.qty, r.gross, r.net, r.carNo, r.sample, r.report, r.deliveryNote, r.inspectors, r.receiver, r.signDate]);
+    const s = sumQueryRows(rows);
+    const totalRow = ['合计 Total', '', '', '', '', '', '', '', '', '', '', '', s.qty, s.gross, s.net, '', '', '', '', '', '', ''];
+    const ws = XLSX.utils.aoa_to_sheet(cond.concat([headers], data, [totalRow]));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, name);
+    XLSX.writeFile(wb, name + '_' + (sd||'起') + '_' + (ed||'止') + '.xlsx');
+    toast('已导出 '+rows.length+' 条查询结果','success');
+  }
+  function renderAllQuery(){
+    const tbody = document.getElementById('allQueryTableBody');
+    tbody.innerHTML = '';
+    const sd = document.getElementById('allStartDate').value;
+    const ed = document.getElementById('allEndDate').value;
+    const tp = document.getElementById('allType').value;
+    const kw = (document.getElementById('allKeyword').value || '').toLowerCase();
+    let inSum=0, outSum=0, inQty=0, outQty=0, grossSum=0, netSum=0, idx=1;
+    const all = [];
+    if(tp!=='out') db.stockIn.forEach(r => all.push({...r, type:'入库'}));
+    if(tp!=='in') db.stockOut.forEach(r => all.push({...r, type:'出库'}));
+    all.filter(r => {
+      if(sd && r.date < sd) return false;
+      if(ed && r.date > ed) return false;
+      if(kw){
+        const t = (r.type+' '+r.no+' '+r.supplier+' '+r.material+' '+r.spec+' '+r.contract+' '+r.order+' '+r.carNo).toLowerCase();
+        if(!t.includes(kw)) return false;
+      }
+      return true;
+    }).sort((a,b)=>b.date.localeCompare(a.date) || b.no.localeCompare(a.no)).forEach(r => {
+      if(r.type==='入库'){ inSum++; inQty += parseFloat(r.qty) || 0; } else { outSum++; outQty += parseFloat(r.qty) || 0; }
+      grossSum += parseFloat(r.gross) || 0;
+      netSum += parseFloat(r.net) || 0;
+      tbody.innerHTML += '<tr><td>'+esc(r.type)+'</td><td>'+esc(r.no)+'</td><td>'+esc(r.date)+'</td><td>'+esc(r.location)+'</td><td>'+esc(r.supplier)+'</td><td>'+esc(r.department)+'</td><td>'+esc(r.plan)+'</td><td>'+esc(r.contract)+'</td><td>'+esc(r.order)+'</td><td>'+esc(r.material)+'</td><td class="spec-cell">'+esc(r.spec)+'</td><td>'+esc(r.unit)+'</td><td>'+(r.type==='入库'?money(r.qty):'')+'</td><td>'+(r.type==='出库'?money(r.qty):'')+'</td><td>'+money(r.gross)+'</td><td>'+money(r.net)+'</td><td>'+esc(r.carNo)+'</td><td>'+esc(r.sample)+'</td></tr>';
+    });
+    const set = (id, v) => { const el = document.getElementById(id); if(el) el.textContent = v; };
+    set('allInSum', inSum);
+    set('allOutSum', outSum);
+    set('allInQty', money(inQty));
+    set('allOutQty', money(outQty));
+    /* 结余 = 入库数量 - 出库数量，正数显示蓝色、负数显示红色 */
+    const bal = inQty - outQty;
+    const balEl = document.getElementById('allBalQty');
+    if(balEl){ balEl.textContent = money(bal); balEl.style.color = bal < 0 ? '#dc2626' : (bal > 0 ? '#1d4ed8' : ''); }
+    set('allGrossSum', money(grossSum));
+    set('allNetSum', money(netSum));
+    set('allQtyInTotal', money(inQty));
+    set('allQtyOutTotal', money(outQty));
+    set('allGrossTotal', money(grossSum));
+    set('allNetTotal', money(netSum));
+  }
+  /* 库存统计：按起始日期~截止日期区间统计，返回错误信息或统计行 */
+  /* 关联物料表：记录缺失物料编号时，按名称+规格（其次仅名称）反查物料表编号 */
+  function matchMaterialNo(name, spec){
+    if(!name) return '';
+    let m = db.materials.find(x => x.name === name && (x.spec||'') === (spec||''));
+    if(!m) m = db.materials.find(x => x.name === name);
+    return m ? m.no : '';
+  }
+  function getStockStats(){
+    const startDate = document.getElementById('stockStartDate').value;
+    const date = document.getElementById('stockStatDate').value || today();
+    const kw = (document.getElementById('stockKeyword').value || '').toLowerCase();
+    if(startDate && startDate > date){
+      return { error: '起始日期（'+startDate+'）不能晚于截止日期（'+date+'），请重新选择！' };
+    }
+    const stats = {};
+    db.stockIn.filter(r => (!startDate || r.date >= startDate) && (!date || r.date <= date)).forEach(r => {
+      const mno = r.materialNo || matchMaterialNo(r.material, r.spec);
+      const k = mno+'|'+r.material+'|'+r.spec+'|'+r.unit;
+      if(!stats[k]) stats[k] = {no:mno, material:r.material, spec:r.spec, unit:r.unit, in:0, out:0};
+      stats[k].in += parseFloat(r.qty) || 0;
+    });
+    db.stockOut.filter(r => (!startDate || r.date >= startDate) && (!date || r.date <= date)).forEach(r => {
+      const mno = r.materialNo || matchMaterialNo(r.material, r.spec);
+      const k = mno+'|'+r.material+'|'+r.spec+'|'+r.unit;
+      if(!stats[k]) stats[k] = {no:mno, material:r.material, spec:r.spec, unit:r.unit, in:0, out:0};
+      stats[k].out += parseFloat(r.qty) || 0;
+    });
+    const rows = Object.values(stats).filter(r => {
+      if(kw){
+        const t = (r.no+' '+r.material+' '+r.spec).toLowerCase();
+        if(!t.includes(kw)) return false;
+      }
+      return true;
+    });
+    return { rows, startDate, endDate: date };
+  }
+  function renderStock(){
+    const res = getStockStats();
+    if(res.error){ toast(res.error,'error'); return; }
+    const rows = res.rows;
+    const tbody = document.getElementById('stockTableBody');
+    tbody.innerHTML = '';
+    let totalIn=0, totalOut=0, idx=1;
+    rows.forEach(r => {
+      totalIn += r.in; totalOut += r.out;
+      tbody.innerHTML += '<tr><td>'+(idx++)+'</td><td>'+esc(r.no)+'</td><td>'+esc(r.material)+'</td><td class="spec-cell">'+esc(r.spec)+'</td><td>'+esc(r.unit)+'</td><td>'+money(r.in)+'</td><td>'+money(r.out)+'</td><td>'+money(r.in-r.out)+'</td><td></td></tr>';
+    });
+    document.getElementById('totalStockItems').textContent = rows.length;
+    document.getElementById('stockRangeText').textContent = (res.startDate || '全部') + ' ~ ' + res.endDate;
+    document.getElementById('totalInSum').textContent = money(totalIn);
+    document.getElementById('totalOutSum').textContent = money(totalOut);
+    document.getElementById('totalStockSum').textContent = money(totalIn-totalOut);
+  }
+  function renderMaterials(){
+    const kw = (document.getElementById('materialSearch').value || '').toLowerCase();
+    const tbody = document.getElementById('materialTableBody');
+    tbody.innerHTML = '';
+    db.materials.filter(m => {
+      if(kw){ const t=(m.no+' '+m.name+' '+m.spec).toLowerCase(); if(!t.includes(kw)) return false; }
+      return true;
+    }).forEach((m,i) => {
+      tbody.innerHTML += '<tr><td>'+(i+1)+'</td><td>'+esc(m.no)+'</td><td>'+esc(m.name)+'</td><td class="spec-cell">'+esc(m.spec)+'</td><td>'+esc(m.unit)+'</td><td>'+esc(m.remark)+'</td><td class="no-print"><button class="btn btn-primary" onclick="editMaterial('+i+')">编辑</button> <button class="btn btn-danger" onclick="deleteMaterial('+i+')">删除</button></td></tr>';
+    });
+  }
+  function renderPartners(){
+    const kw = (document.getElementById('supplierSearch').value || '').toLowerCase();
+    const tbody = document.getElementById('supplierTableBody');
+    tbody.innerHTML = '';
+    db.suppliers.filter(s => {
+      if(kw){ const t=(s.name+' '+(s.contact||'')+' '+(s.tin||'')+' '+(s.vrn||'')).toLowerCase(); if(!t.includes(kw)) return false; }
+      return true;
+    }).forEach((s,i) => {
+      tbody.innerHTML += '<tr><td>'+(i+1)+'</td><td>'+esc(s.name)+'</td><td class="text-left">'+esc(s.address)+'</td><td>'+esc(s.vrn)+'</td><td>'+esc(s.tin)+'</td><td>'+esc(s.contact)+'</td><td>'+esc(s.email)+'</td><td>'+esc(s.contract)+'</td><td>'+esc(s.order)+'</td><td>'+esc(s.plan)+'</td><td>'+esc(s.remark)+'</td><td class="no-print"><button class="btn btn-primary" onclick="editPartner('+i+')">编辑</button> <button class="btn btn-danger" onclick="deletePartner('+i+')">删除</button></td></tr>';
+    });
+  }
+
+  /* ============ 物料/供应商 CRUD ============ */
+  /* 物料编码自动流水编号：Gm+4位序号，取当前最大序号+1（如最大 Gm0008 → 新增 Gm0009） */
+  function nextMaterialNo(){
+    let max = 0;
+    db.materials.forEach(m => {
+      const match = /^Gm(\d+)$/i.exec(String(m.no||'').trim());
+      if(match){ const n = parseInt(match[1],10); if(n>max) max = n; }
+    });
+    return 'Gm' + String(max+1).padStart(4,'0');
+  }
+  function addMaterialForm(){
+    const html = '<div class="grid grid-cols-2 gap-4">'+
+      '<div><label class="form-label">物料编号（自动生成）</label><input id="mNo" class="form-input" value="'+nextMaterialNo()+'" readonly style="background:#f1f5f9;"></div>'+
+      '<div><label class="form-label">名称</label><input id="mName" class="form-input"></div>'+
+      '<div><label class="form-label">规格型号</label><textarea id="mSpec" class="form-input" rows="2"></textarea></div>'+
+      '<div><label class="form-label">单位</label><input id="mUnit" class="form-input"></div>'+
+      '<div class="col-span-2"><label class="form-label">备注</label><input id="mRemark" class="form-input"></div>'+
+      '</div><div class="mt-4 flex justify-end gap-2"><button class="btn btn-gray" onclick="closeModal()">取消</button><button class="btn btn-success" onclick="saveMaterial()">保存</button></div>';
+    openModal('新增物料', html);
+  }
+  function saveMaterial(){
+    let no = document.getElementById('mNo').value.trim();
+    const name = document.getElementById('mName').value.trim();
+    if(!no) no = nextMaterialNo();
+    if(!name){ toast('名称必填','error'); return; }
+    db.materials.push({no:no, name:name, spec:document.getElementById('mSpec').value, unit:document.getElementById('mUnit').value, remark:document.getElementById('mRemark').value});
+    saveDB(); closeModal(); renderMaterials(); toast('保存成功','success');
+  }
+  function editMaterial(idx){
+    const m = db.materials[idx];
+    const html = '<div class="grid grid-cols-2 gap-4">'+
+      '<div><label class="form-label">物料编号</label><input id="mNo" class="form-input" value="'+esc(m.no)+'"></div>'+
+      '<div><label class="form-label">名称</label><input id="mName" class="form-input" value="'+esc(m.name)+'"></div>'+
+      '<div><label class="form-label">规格型号</label><textarea id="mSpec" class="form-input" rows="2">'+esc(m.spec)+'</textarea></div>'+
+      '<div><label class="form-label">单位</label><input id="mUnit" class="form-input" value="'+esc(m.unit)+'"></div>'+
+      '<div class="col-span-2"><label class="form-label">备注</label><input id="mRemark" class="form-input" value="'+esc(m.remark)+'"></div>'+
+      '</div><div class="mt-4 flex justify-end gap-2"><button class="btn btn-gray" onclick="closeModal()">取消</button><button class="btn btn-success" onclick="updateMaterial('+idx+')">保存</button></div>';
+    openModal('编辑物料', html);
+  }
+  function updateMaterial(idx){
+    const no = document.getElementById('mNo').value.trim();
+    const name = document.getElementById('mName').value.trim();
+    if(!no || !name){ toast('编号和名称必填','error'); return; }
+    db.materials[idx] = {no:no, name:name, spec:document.getElementById('mSpec').value, unit:document.getElementById('mUnit').value, remark:document.getElementById('mRemark').value};
+    saveDB(); closeModal(); renderMaterials(); toast('更新成功','success');
+  }
+  function deleteMaterial(idx){
+    if(!confirm('确定删除该物料？')) return;
+    db.materials.splice(idx,1); saveDB(); renderMaterials(); toast('已删除','info');
+  }
+  function addPartnerForm(){
+    const html = '<div class="grid grid-cols-2 gap-4">'+
+      '<div class="col-span-2"><label class="form-label">名称</label><input id="pName" class="form-input"></div>'+
+      '<div class="col-span-2"><label class="form-label">地址</label><textarea id="pAddress" class="form-input" rows="2"></textarea></div>'+
+      '<div><label class="form-label">VRN</label><input id="pVrn" class="form-input"></div>'+
+      '<div><label class="form-label">TIN</label><input id="pTin" class="form-input"></div>'+
+      '<div><label class="form-label">联系人</label><input id="pContact" class="form-input"></div>'+
+      '<div><label class="form-label">E-mail</label><input id="pEmail" class="form-input"></div>'+
+      '<div><label class="form-label">合同号</label><input id="pContract" class="form-input"></div>'+
+      '<div><label class="form-label">采购单号</label><input id="pOrder" class="form-input"></div>'+
+      '<div><label class="form-label">计划需求单号</label><input id="pPlan" class="form-input"></div>'+
+      '<div class="col-span-2"><label class="form-label">备注</label><input id="pRemark" class="form-input"></div>'+
+      '</div><div class="mt-4 flex justify-end gap-2"><button class="btn btn-gray" onclick="closeModal()">取消</button><button class="btn btn-success" onclick="savePartner()">保存</button></div>';
+    openModal('新增供应商', html);
+  }
+  function savePartner(){
+    const name = document.getElementById('pName').value.trim();
+    if(!name){ toast('名称必填','error'); return; }
+    db.suppliers.push({name:name, address:document.getElementById('pAddress').value, vrn:document.getElementById('pVrn').value, tin:document.getElementById('pTin').value, contact:document.getElementById('pContact').value, email:document.getElementById('pEmail').value, contract:document.getElementById('pContract').value, order:document.getElementById('pOrder').value, plan:document.getElementById('pPlan').value, remark:document.getElementById('pRemark').value});
+    saveDB(); closeModal(); renderPartners(); renderSupplierOptions('inDocSupplier'); renderSupplierOptions('outDocSupplier'); toast('保存成功','success');
+  }
+  function editPartner(idx){
+    const s = db.suppliers[idx];
+    const html = '<div class="grid grid-cols-2 gap-4">'+
+      '<div class="col-span-2"><label class="form-label">名称</label><input id="pName" class="form-input" value="'+esc(s.name)+'"></div>'+
+      '<div class="col-span-2"><label class="form-label">地址</label><textarea id="pAddress" class="form-input" rows="2">'+esc(s.address)+'</textarea></div>'+
+      '<div><label class="form-label">VRN</label><input id="pVrn" class="form-input" value="'+esc(s.vrn)+'"></div>'+
+      '<div><label class="form-label">TIN</label><input id="pTin" class="form-input" value="'+esc(s.tin)+'"></div>'+
+      '<div><label class="form-label">联系人</label><input id="pContact" class="form-input" value="'+esc(s.contact)+'"></div>'+
+      '<div><label class="form-label">E-mail</label><input id="pEmail" class="form-input" value="'+esc(s.email)+'"></div>'+
+      '<div><label class="form-label">合同号</label><input id="pContract" class="form-input" value="'+esc(s.contract)+'"></div>'+
+      '<div><label class="form-label">采购单号</label><input id="pOrder" class="form-input" value="'+esc(s.order)+'"></div>'+
+      '<div><label class="form-label">计划需求单号</label><input id="pPlan" class="form-input" value="'+esc(s.plan)+'"></div>'+
+      '<div class="col-span-2"><label class="form-label">备注</label><input id="pRemark" class="form-input" value="'+esc(s.remark)+'"></div>'+
+      '</div><div class="mt-4 flex justify-end gap-2"><button class="btn btn-gray" onclick="closeModal()">取消</button><button class="btn btn-success" onclick="updatePartner('+idx+')">保存</button></div>';
+    openModal('编辑供应商', html);
+  }
+  function updatePartner(idx){
+    const name = document.getElementById('pName').value.trim();
+    if(!name){ toast('名称必填','error'); return; }
+    db.suppliers[idx] = {name:name, address:document.getElementById('pAddress').value, vrn:document.getElementById('pVrn').value, tin:document.getElementById('pTin').value, contact:document.getElementById('pContact').value, email:document.getElementById('pEmail').value, contract:document.getElementById('pContract').value, order:document.getElementById('pOrder').value, plan:document.getElementById('pPlan').value, remark:document.getElementById('pRemark').value};
+    saveDB(); closeModal(); renderPartners(); renderSupplierOptions('inDocSupplier'); renderSupplierOptions('outDocSupplier'); toast('更新成功','success');
+  }
+  function deletePartner(idx){
+    if(!confirm('确定删除？')) return;
+    db.suppliers.splice(idx,1); saveDB(); renderPartners(); renderSupplierOptions('inDocSupplier'); renderSupplierOptions('outDocSupplier'); toast('已删除','info');
+  }
+
+ /* ============ 事件监听 & 初始化 ============ */
+  document.getElementById('loginForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value;
+    if(u==='admin' && p===''){
+      document.getElementById('loginPage').classList.add('hidden');
+      document.getElementById('mainPage').classList.remove('hidden');
+      switchTab('stockIn');
+      refreshAll();
+      document.getElementById('currentDate').textContent = today() + ' ' + new Date().toLocaleTimeString('zh-CN');
+      toast('欢迎光临金海仓库管理系统','success');
+    }else{
+      toast('用户名或密码错误（默认 admin / 空密码）','error');
+    }
+  });
+  document.getElementById('logoutBtn').addEventListener('click',()=>{
+    document.getElementById('mainPage').classList.add('hidden');
+    document.getElementById('loginPage').classList.remove('hidden');
+    toast('谢谢惠顾，期待下次光临','info');
+  });
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>switchTab(btn.dataset.tab));
+  });
+  function switchTab(name){
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    const c = document.getElementById('tab-'+name);
+    if(c) c.classList.remove('hidden');
+    const b = document.querySelector('.tab-btn[data-tab="'+name+'"]');
+    if(b) b.classList.add('active');
+    if(name==='stockIn'){ renderSupplierOptions('inDocSupplier'); if(!document.getElementById('inDocNo').value) newDocument('in'); else renderDocList('in'); }
+    if(name==='stockOut'){ renderSupplierOptions('outDocSupplier'); if(!document.getElementById('outDocNo').value) newDocument('out'); else renderDocList('out'); }
+    if(name==='inQuery') renderInQuery();
+    if(name==='outQuery') renderOutQuery();
+    if(name==='allQuery') renderAllQuery();
+    if(name==='stock') renderStock();
+    if(name==='materials') renderMaterials();
+    if(name==='suppliers') renderPartners();
+  }
+  function refreshAll(){
+    renderInQuery(); renderOutQuery(); renderAllQuery();
+    renderStock(); renderMaterials(); renderPartners();
+    renderDocList('in'); renderDocList('out');
+    renderJsonStats();
+  }
+
+  // 供应商选择事件
+  document.getElementById('inDocSupplier').addEventListener('change', e=>onSupplierChange('in', e.target.value));
+  document.getElementById('outDocSupplier').addEventListener('change', e=>onSupplierChange('out', e.target.value));
+
+  // 入库/出库日期变更事件（新单按新日期重新生成单号）
+  document.getElementById('inDocDate').addEventListener('change', ()=>onDocDateChange('in'));
+  document.getElementById('outDocDate').addEventListener('change', ()=>onDocDateChange('out'));
+
+  // 存储位置变更事件（未保存的新单在列表第一行实时同步显示）
+  document.getElementById('inDocLocation').addEventListener('change', ()=>{ if(!currentDoc.in) renderDocList('in'); });
+  document.getElementById('outDocLocation').addEventListener('change', ()=>{ if(!currentDoc.out) renderDocList('out'); });
+
+  // 明细查询事件
+  document.getElementById('searchInBtn').addEventListener('click', renderInQuery);
+  document.getElementById('resetInBtn').addEventListener('click', ()=>{ document.getElementById('inStartDate').value=''; document.getElementById('inEndDate').value=''; document.getElementById('inKeyword').value=''; renderInQuery(); });
+  document.getElementById('exportInQueryBtn').addEventListener('click', ()=>exportQueryExcel('in'));
+  document.getElementById('searchOutBtn').addEventListener('click', renderOutQuery);
+  document.getElementById('resetOutBtn').addEventListener('click', ()=>{ document.getElementById('outStartDate').value=''; document.getElementById('outEndDate').value=''; document.getElementById('outKeyword').value=''; renderOutQuery(); });
+  document.getElementById('exportOutQueryBtn').addEventListener('click', ()=>exportQueryExcel('out'));
+  document.getElementById('searchAllBtn').addEventListener('click', renderAllQuery);
+  document.getElementById('resetAllBtn').addEventListener('click', ()=>{ document.getElementById('allStartDate').value=''; document.getElementById('allEndDate').value=''; document.getElementById('allKeyword').value=''; document.getElementById('allType').value='all'; renderAllQuery(); });
+  document.getElementById('exportAllQueryBtn').addEventListener('click', exportAllQueryExcel);
+  function exportAllQueryExcel(){
+    const sd = document.getElementById('allStartDate').value;
+    const ed = document.getElementById('allEndDate').value;
+    const tp = document.getElementById('allType').value;
+    const kw = (document.getElementById('allKeyword').value || '').toLowerCase();
+    const all = [];
+    if(tp!=='out') db.stockIn.forEach(r => all.push({...r, type:'入库'}));
+    if(tp!=='in') db.stockOut.forEach(r => all.push({...r, type:'出库'}));
+    const rows = all.filter(r => {
+      if(sd && r.date < sd) return false;
+      if(ed && r.date > ed) return false;
+      if(kw){ const t=(r.type+' '+r.no+' '+r.supplier+' '+r.material+' '+r.spec+' '+r.contract+' '+r.order+' '+r.carNo).toLowerCase(); if(!t.includes(kw)) return false; }
+      return true;
+    });
+    const sorted = sortRowsByNo(rows);   /* 按单号顺序导出 */
+    const headers = ['类型','单号','日期','位置','往来单位','需求部门','需求计划单号','合同号','采购单号','名称','规格型号','单位','入库数量','出库数量','毛重','净重','车号','备注'];
+    const data = sorted.map(r => [r.type, r.no, r.date, r.location, r.supplier, r.department, r.plan, r.contract, r.order, r.material, r.spec, r.unit, r.type==='入库'?r.qty:'', r.type==='出库'?r.qty:'', r.gross, r.net, r.carNo, r.sample]);
+    /* 合计行：入库/出库数量、毛重、净重分别累计 */
+    const t = sorted.reduce((a, r) => {
+      if(r.type === '入库') a.inQty += parseFloat(r.qty) || 0; else a.outQty += parseFloat(r.qty) || 0;
+      a.gross += parseFloat(r.gross) || 0;
+      a.net += parseFloat(r.net) || 0;
+      return a;
+    }, {inQty:0, outQty:0, gross:0, net:0});
+    t.inQty = round3(t.inQty); t.outQty = round3(t.outQty); t.gross = round3(t.gross); t.net = round3(t.net);
+    const totalRow = ['合计 Total','','','','','','','','','','','', t.inQty, t.outQty, t.gross, t.net, '', ''];
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data, totalRow]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '综合查询');
+    XLSX.writeFile(wb, '综合查询.xlsx');
+    toast('已导出 '+sorted.length+' 条查询结果','success');
+  }
+
+  // 库存/物料/供应商事件
+  document.getElementById('searchStockBtn').addEventListener('click', renderStock);
+  document.getElementById('exportStockBtn').addEventListener('click', ()=>{
+    const res = getStockStats();
+    if(res.error){ toast(res.error,'error'); return; }
+    const rows = res.rows;
+    const headers = ['物料编号','名称','规格型号','单位','累计入库','累计出库','当前库存','备注'];
+    const data = rows.map(r => [r.no, r.material, r.spec, r.unit, r.in, r.out, r.in-r.out, '']);
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '库存统计');
+    XLSX.writeFile(wb, '库存统计_'+(res.startDate||'起')+'_'+res.endDate+'.xlsx');
+  });
+  // 起始/截止日期变更时自动重新统计
+  document.getElementById('stockStartDate').addEventListener('change', renderStock);
+  document.getElementById('stockStatDate').addEventListener('change', renderStock);
+  // 重置筛选条件：清空起始日期与关键字，截止日期恢复为今天
+  document.getElementById('resetStockBtn').addEventListener('click', ()=>{
+    document.getElementById('stockStartDate').value = '';
+    document.getElementById('stockStatDate').value = today();
+    document.getElementById('stockKeyword').value = '';
+    renderStock();
+    toast('筛选条件已重置','info');
+  });
+  document.getElementById('addMaterialBtn').addEventListener('click', addMaterialForm);
+  document.getElementById('exportMaterialBtn').addEventListener('click', ()=>exportTable('material','物料表'));
+  document.getElementById('materialSearch').addEventListener('input', renderMaterials);
+  document.getElementById('addPartnerBtn').addEventListener('click', addPartnerForm);
+  document.getElementById('exportPartnerBtn').addEventListener('click', ()=>exportTable('supplier','供应商表'));
+  document.getElementById('supplierSearch').addEventListener('input', renderPartners);
+
+  loadDB();
+  restoreFileBinding();
+</script>
+
+</body>
+</html>
